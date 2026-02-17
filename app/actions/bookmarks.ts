@@ -24,8 +24,9 @@ export async function addBookmarkAction(formData: FormData) {
   //get values
   const title = formData.get('title')
   const url = formData.get('url')
+  const description = formData.get('description')
 
-  console.log('[addBookmarkAction] Form data:', { title, url })
+  console.log('[addBookmarkAction] Form data:', { title, url, description })
 
   //validate title
   if (!title || title.toString().trim() === '') {
@@ -50,7 +51,13 @@ export async function addBookmarkAction(formData: FormData) {
   //add bookmark
   console.log('[addBookmarkAction] Calling addBookmark() to insert into database...')
   const collectionId = formData.get('collection_id')
-  const result = await addBookmark(user.id, title.toString(), url.toString())
+  const result = await addBookmark(
+    user.id,
+    title.toString(),
+    url.toString(),
+    collectionId ? collectionId.toString() : null,
+    description ? description.toString() : null
+  )
   console.log('[addBookmarkAction] ✅ Bookmark inserted, result:', result)
 
   //add to collection via junction table if selected
@@ -89,6 +96,7 @@ export async function updateBookmarkAction(
   //get values
   const title = formData.get('title')
   const url = formData.get('url')
+  const description = formData.get('description')
 
   //validate title
   if (!title || title.toString().trim() === '') {
@@ -111,7 +119,14 @@ export async function updateBookmarkAction(
   }
 
   //update bookmark
-  await updateBookmark(id, user.id, title.toString(), url.toString())
+  await updateBookmark(
+    id,
+    user.id,
+    title.toString(),
+    url.toString(),
+    undefined,
+    description !== null ? (description ? description.toString() : null) : undefined
+  )
 
   revalidatePath('/dashboard')
 }

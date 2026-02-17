@@ -8,6 +8,7 @@ export interface Bookmark {
   created_at: string
   is_pinned?: boolean
   collection_id?: string | null
+  description?: string | null
 }
 
 //get bookmarks
@@ -40,7 +41,8 @@ export async function addBookmark(
   userId: string,
   title: string,
   url: string,
-  collectionId?: string | null
+  collectionId?: string | null,
+  description?: string | null
 ): Promise<Bookmark | null> {
   const supabase = await createClient()
 
@@ -50,6 +52,7 @@ export async function addBookmark(
     user_id: string
     is_pinned: boolean
     collection_id?: string | null
+    description?: string | null
   } = {
     title: title.trim(),
     url: url.trim(),
@@ -59,6 +62,10 @@ export async function addBookmark(
 
   if (collectionId) {
     insertData.collection_id = collectionId
+  }
+
+  if (description && description.trim()) {
+    insertData.description = description.trim()
   }
 
   const { data, error } = await supabase
@@ -81,13 +88,15 @@ export async function updateBookmark(
   userId: string,
   title: string,
   url: string,
-  isPinned?: boolean
+  isPinned?: boolean,
+  description?: string | null
 ): Promise<Bookmark | null> {
   const supabase = await createClient()
   const updateData: {
     title: string
     url: string
     is_pinned?: boolean
+    description?: string | null
   } = {
     title: title.trim(),
     url: url.trim(),
@@ -95,6 +104,10 @@ export async function updateBookmark(
 
   if (typeof isPinned === 'boolean') {
     updateData.is_pinned = isPinned
+  }
+
+  if (description !== undefined) {
+    updateData.description = description && description.trim() ? description.trim() : null
   }
 
   const { data, error } = await supabase
