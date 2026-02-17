@@ -10,6 +10,7 @@ import DeleteConfirmationModal from './DeleteConfirmationModal'
 import { useLinkPreview } from './hooks/useLinkPreview'
 import PreviewCard from './PreviewCard'
 import { openLinksInNewTabs } from '@/lib/utils'
+import PopupVerificationModal from './PopupVerificationModal'
 
 interface BookmarkListProps {
   initialBookmarks: Bookmark[]
@@ -60,10 +61,15 @@ export default function BookmarkList({
   const [isUpdating, setIsUpdating] = useState(false)
   const [connected, setConnected] = useState(false)
   const [deleteModalBookmarkId, setDeleteModalBookmarkId] = useState<string | null>(null)
+  const [showPermissionModal, setShowPermissionModal] = useState(false)
+  const [hasVerifiedPermission, setHasVerifiedPermission] = useState(false)
 
   const dashboardContext = useContext(DashboardContext)
   const channelRef = useRef<any>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // memoize the supabase client instance so it persists across renders
+  const [supabase] = useState(() => createClient())
 
   // Link preview on hover
   const { preview, isLoading: previewLoading, error: previewError, visible: previewVisible, handleMouseEnter: onPreviewEnter, handleMouseLeave: onPreviewLeave } = useLinkPreview()
@@ -146,102 +152,92 @@ export default function BookmarkList({
 
   //subscribe to real-time updates
   useEffect(() => {
-    console.log('[BookmarkList] Setting up subscription for userId:', userId)
+    //cleanup any previous channel to be safe
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+    }
 
-    const supabase = createClient()
+    console.log('[BookmarkList] Setting up subscription for userId:', userId)
 
     //create the channel
     const channel = supabase.channel(`bookmarks-${userId}`)
-
-    //handle INSERT events
-    channel.on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'bookmarks' },
-      (payload: any) => {
-        console.log('[BookmarkList] INSERT event received')
-
-        //only add if it belongs to this user
-        if (payload.new.user_id !== userId) {
-          return
-        }
-
-        setBookmarks((current) => {
-          //check if already exists
-          if (current.some((b) => b.id === payload.new.id)) {
-            return current
-          }
-          //add to the beginning
-          return sortBookmarks([payload.new, ...current])
-        })
-      }
-    )
-
-    //handle UPDATE events
-    channel.on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'bookmarks' },
-      (payload: any) => {
-        console.log('[BookmarkList] UPDATE event received')
-
-        if (payload.new.user_id !== userId) {
-          return
-        }
-
-        setBookmarks((current) =>
-          sortBookmarks(
-            current.map((b) => (b.id === payload.new.id ? payload.new : b))
-          )
-        )
-        setEditingId(null)
-      }
-    )
-
-    //handle DELETE events
-    channel.on(
-      'postgres_changes',
-      { event: 'DELETE', schema: 'public', table: 'bookmarks' },
-      (payload: any) => {
-        console.log('[BookmarkList] DELETE event received')
-
-        setBookmarks((current) => current.filter((b) => b.id !== payload.old.id))
-        setSelectedIds((prev) => {
-          const next = new Set(prev)
-          next.delete(payload.old.id)
-          return next
-        })
-      }
-    )
-
-    //subscribe to the channel
-    channel.subscribe((status: string) => {
-      console.log('[BookmarkList] Subscription status:', status)
-
-      if (status === 'SUBSCRIBED') {
-        console.log('[BookmarkList] Successfully connected to real-time')
-        setConnected(true)
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('[BookmarkList] Channel error, will retry')
-        setConnected(false)
-        attemptReconnect()
-      } else if (status === 'CLOSED') {
-        console.log('[BookmarkList] Channel closed')
-        setConnected(false)
-      }
-    })
-
     channelRef.current = channel
 
-    //cleanup function
+    //handle INSERT events
+    channel
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bookmarks' },
+        (payload: any) => {
+          console.log('[BookmarkList] INSERT event received')
+
+          //only add if it belongs to this user
+          if (payload.new.user_id !== userId) {
+            return
+          }
+
+          setBookmarks((current) => {
+            //check if already exists
+            if (current.some((b) => b.id === payload.new.id)) {
+              return current
+            }
+            //add to the beginning
+            return sortBookmarks([payload.new, ...current])
+          })
+        }
+      )
+      //handle DELETE events
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'bookmarks' },
+        (payload: any) => {
+          console.log('[BookmarkList] DELETE event received')
+          setBookmarks((current) => current.filter((b) => b.id !== payload.old.id))
+          //also remove from selection if selected
+          setSelectedIds((prev) => {
+            if (prev.has(payload.old.id)) {
+              const next = new Set(prev)
+              next.delete(payload.old.id)
+              return next
+            }
+            return prev
+          })
+        }
+      )
+      //handle UPDATE events
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'bookmarks' },
+        (payload: any) => {
+          console.log('[BookmarkList] UPDATE event received')
+          if (payload.new.user_id !== userId) return
+
+          setBookmarks((current) =>
+            sortBookmarks(
+              current.map((b) => (b.id === payload.new.id ? { ...b, ...payload.new } : b))
+            )
+          )
+          //if pinned status changed, re-sort happens automatically via sortBookmarks
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[BookmarkList] Realtime connected')
+          setConnected(true)
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.log('[BookmarkList] Realtime disconnected:', status, err)
+          setConnected(false)
+        }
+      })
+
     return () => {
       console.log('[BookmarkList] Cleaning up subscription')
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
+        channelRef.current = null
       }
     }
-  }, [userId])
+  }, [userId, supabase])
 
   //handle page visibility changes
   useEffect(() => {
@@ -391,6 +387,11 @@ export default function BookmarkList({
       if (!confirm(`Open ${selectedIds.size} links in new tabs?`)) {
         return
       }
+    }
+
+    if (!hasVerifiedPermission) {
+      setShowPermissionModal(true)
+      return
     }
 
     const selectedBookmarksList = bookmarks.filter((b) => selectedIds.has(b.id))
@@ -903,7 +904,7 @@ export default function BookmarkList({
                           {domain || 'Unknown domain'}
                         </p>
                         <span className="text-gray-500 dark:text-gray-400">&middot;</span>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
                           {formatDate(bookmark.created_at)}
                         </p>
                       </div>
@@ -1085,8 +1086,22 @@ export default function BookmarkList({
         })}
       </div>
 
+
+      <PopupVerificationModal
+        isOpen={showPermissionModal}
+        count={selectedIds.size}
+        onClose={() => setShowPermissionModal(false)}
+        onVerified={() => {
+          setHasVerifiedPermission(true)
+          const selectedBookmarksList = bookmarks.filter((b) => selectedIds.has(b.id))
+          const urls = selectedBookmarksList.map((b) => b.url)
+          openLinksInNewTabs(urls)
+          setSelectedIds(new Set())
+        }}
+      />
+
       <DeleteConfirmationModal
-        isOpen={deleteModalBookmarkId !== null}
+        isOpen={!!deleteModalBookmarkId}
         isDeleting={deleteModalBookmarkId ? deletingIds.has(deleteModalBookmarkId) : false}
         onClose={closeDeleteModal}
         onConfirm={confirmDeleteFromModal}
