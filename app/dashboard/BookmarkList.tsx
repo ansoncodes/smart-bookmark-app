@@ -58,6 +58,7 @@ export default function BookmarkList({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editUrl, setEditUrl] = useState('')
+  const [editDescription, setEditDescription] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [connected, setConnected] = useState(false)
@@ -431,6 +432,7 @@ export default function BookmarkList({
     setEditingId(bookmark.id)
     setEditTitle(bookmark.title)
     setEditUrl(bookmark.url)
+    setEditDescription(bookmark.description || '')
     setEditError(null)
   }
 
@@ -473,6 +475,7 @@ export default function BookmarkList({
     setEditingId(null)
     setEditTitle('')
     setEditUrl('')
+    setEditDescription('')
     setEditError(null)
   }
 
@@ -503,6 +506,7 @@ export default function BookmarkList({
     const formData = new FormData()
     formData.append('title', editTitle)
     formData.append('url', editUrl)
+    formData.append('description', editDescription)
 
     try {
       await updateBookmarkAction(id, formData)
@@ -794,6 +798,19 @@ export default function BookmarkList({
                       placeholder="https://example.com"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2">
+                      Description (optional)
+                    </label>
+                    <textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      disabled={isUpdating}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/30 disabled:opacity-50 bg-white dark:bg-zinc-950 text-gray-900 dark:text-white transition-all duration-200 resize-vertical"
+                      placeholder="Add a note or description..."
+                    />
+                  </div>
 
                   {editError && (
                     <div className="text-sm text-red-400 flex items-center gap-2">
@@ -880,6 +897,11 @@ export default function BookmarkList({
                           {formatDate(bookmark.created_at)}
                         </p>
                       </div>
+                      {bookmark.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
+                          {bookmark.description}
+                        </p>
+                      )}
                     </a>
                   </div>
 
