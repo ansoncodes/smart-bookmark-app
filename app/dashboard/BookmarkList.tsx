@@ -9,6 +9,7 @@ import { DashboardContext } from './DashboardContent'
 import DeleteConfirmationModal from './DeleteConfirmationModal'
 import { useLinkPreview } from './hooks/useLinkPreview'
 import PreviewCard from './PreviewCard'
+import { openLinksInNewTabs } from '@/lib/utils'
 
 interface BookmarkListProps {
   initialBookmarks: Bookmark[]
@@ -383,6 +384,21 @@ export default function BookmarkList({
     }
   }
 
+  function handleOpenSelected() {
+    if (selectedIds.size === 0) return
+
+    if (selectedIds.size > 5) {
+      if (!confirm(`Open ${selectedIds.size} links in new tabs?`)) {
+        return
+      }
+    }
+
+    const selectedBookmarksList = bookmarks.filter((b) => selectedIds.has(b.id))
+    const urls = selectedBookmarksList.map((b) => b.url)
+    openLinksInNewTabs(urls)
+    setSelectedIds(new Set())
+  }
+
   function handleEditClick(bookmark: Bookmark) {
     setEditingId(bookmark.id)
     setEditTitle(bookmark.title)
@@ -653,6 +669,14 @@ export default function BookmarkList({
             <span className="text-sm text-gray-500 dark:text-gray-400">
               {selectedIds.size} selected
             </span>
+
+            {/* Open Selected */}
+            <button
+              onClick={handleOpenSelected}
+              className="bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all duration-200 font-medium whitespace-nowrap"
+            >
+              Open Selected
+            </button>
 
             {/* Add to Collection */}
             {collections.length > 0 && (
