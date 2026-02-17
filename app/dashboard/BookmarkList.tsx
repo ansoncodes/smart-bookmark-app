@@ -64,6 +64,7 @@ export default function BookmarkList({
   const [deleteModalBookmarkId, setDeleteModalBookmarkId] = useState<string | null>(null)
   const [showPermissionModal, setShowPermissionModal] = useState(false)
   const [hasVerifiedPermission, setHasVerifiedPermission] = useState(false)
+  const [isOpenAllMode, setIsOpenAllMode] = useState(false)
 
   // Reset selection when collection changes
   useEffect(() => {
@@ -396,6 +397,7 @@ export default function BookmarkList({
     }
 
     if (!hasVerifiedPermission) {
+      setIsOpenAllMode(false)
       setShowPermissionModal(true)
       return
     }
@@ -404,6 +406,25 @@ export default function BookmarkList({
     const urls = selectedBookmarksList.map((b) => b.url)
     openLinksInNewTabs(urls)
     setSelectedIds(new Set())
+  }
+
+  function handleOpenAll() {
+    if (filteredBookmarks.length === 0) return
+
+    if (filteredBookmarks.length > 5) {
+      if (!confirm(`Open ${filteredBookmarks.length} links in new tabs?`)) {
+        return
+      }
+    }
+
+    if (!hasVerifiedPermission) {
+      setIsOpenAllMode(true)
+      setShowPermissionModal(true)
+      return
+    }
+
+    const urls = filteredBookmarks.map((b) => b.url)
+    openLinksInNewTabs(urls)
   }
 
   function handleEditClick(bookmark: Bookmark) {
@@ -629,6 +650,19 @@ export default function BookmarkList({
         </div>
 
         <div className="flex items-center gap-3 md:justify-end">
+          {selectedCollectionId && filteredBookmarks.length > 0 && (
+            <button
+              onClick={handleOpenAll}
+              className="hidden md:flex items-center gap-2 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
+              title="Open all displayed bookmarks in this collection"
+            >
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Open All
+            </button>
+          )}
+
           <div className="flex items-center">
             <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">Sort</span>
             <select
@@ -1027,14 +1061,20 @@ export default function BookmarkList({
 
       <PopupVerificationModal
         isOpen={showPermissionModal}
-        count={selectedIds.size}
+        count={isOpenAllMode ? filteredBookmarks.length : selectedIds.size}
         onClose={() => setShowPermissionModal(false)}
         onVerified={() => {
           setHasVerifiedPermission(true)
-          const selectedBookmarksList = bookmarks.filter((b) => selectedIds.has(b.id))
-          const urls = selectedBookmarksList.map((b) => b.url)
-          openLinksInNewTabs(urls)
-          setSelectedIds(new Set())
+          if (isOpenAllMode) {
+            const urls = filteredBookmarks.map((b) => b.url)
+            openLinksInNewTabs(urls)
+            setIsOpenAllMode(false)
+          } else {
+            const selectedBookmarksList = bookmarks.filter((b) => selectedIds.has(b.id))
+            const urls = selectedBookmarksList.map((b) => b.url)
+            openLinksInNewTabs(urls)
+            setSelectedIds(new Set())
+          }
         }}
       />
 

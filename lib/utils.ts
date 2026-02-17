@@ -21,7 +21,7 @@ export async function verifyPopupPermissions(): Promise<boolean> {
     return success
 }
 
-export function openLinksInNewTabs(urls: string[]) {
+export function openLinksInNewTabs(urls: string[], delayMs = 200) {
     const validUrls = urls.filter((url) => {
         try {
             new URL(url)
@@ -36,6 +36,6 @@ export function openLinksInNewTabs(urls: string[]) {
     validUrls.forEach((url, i) => {
         setTimeout(() => {
             window.open(url, '_blank', 'noopener,noreferrer')
-        }, i * 100)
+        }, i * delayMs)
     })
 }
