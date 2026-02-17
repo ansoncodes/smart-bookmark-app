@@ -1,9 +1,20 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useTheme } from './ThemeProvider'
 
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <div className="h-8 w-16 rounded-full bg-gray-200 dark:bg-zinc-800/50 animate-pulse" />
+  }
+
   const isDark = theme === 'dark'
 
   return (
@@ -12,11 +23,10 @@ export default function ThemeToggle() {
       role="switch"
       aria-checked={isDark}
       onClick={toggleTheme}
-      className={`relative inline-flex h-8 w-16 items-center rounded-full border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 ${
-        isDark
+      className={`relative inline-flex h-8 w-16 items-center rounded-full border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 ${isDark
           ? 'bg-zinc-900 border-zinc-800'
           : 'bg-green-500 border-green-500'
-      }`}
+        }`}
       title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
     >
@@ -33,9 +43,8 @@ export default function ThemeToggle() {
       </span>
 
       <span
-        className={`inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-white text-gray-700 shadow-sm transition-all duration-200 ${
-          isDark ? 'translate-x-8' : 'translate-x-1'
-        }`}
+        className={`inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-white text-gray-700 shadow-sm transition-all duration-200 ${isDark ? 'translate-x-8' : 'translate-x-1'
+          }`}
       >
         {isDark ? (
           <svg className="h-4 w-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
