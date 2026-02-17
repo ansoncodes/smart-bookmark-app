@@ -24,8 +24,6 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
     const title = formData.get('title') as string
     const url = formData.get('url') as string
 
-    console.log('[AddBookmarkForm] Submitting form with:', { title, url })
-
     //client-side validation
     if (!title || title.trim() === '') {
       setError('Please enter a title')
@@ -49,11 +47,9 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
     }
 
     try {
-      console.log('[AddBookmarkForm] Calling addBookmarkAction...')
       const bookmark = await addBookmarkAction(formData)
-      console.log('[AddBookmarkForm] Bookmark created:', bookmark)
 
-      //optimistically add bookmark to the list immediately using the ref callback
+      
       if (bookmark) {
         if (dashboardContext?.optimisticAddCallbackRef.current) {
           dashboardContext.optimisticAddCallbackRef.current(bookmark)
@@ -63,13 +59,13 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
         }
       }
 
-      //clear form on success
+      // Clear form on success
       formRef.current?.reset()
 
-      //show success message briefly
+      // Show success message briefly
       const successMessage = document.createElement('div')
       successMessage.className =
-        'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2'
+        'fixed top-4 right-4 bg-green-500 text-black px-6 py-3 rounded-lg shadow-sm z-50 flex items-center gap-2'
       successMessage.innerHTML = `
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -94,33 +90,39 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">
+    <div
+      id="add-bookmark-form"
+      className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm p-5 transition-all duration-200"
+    >
+      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
         Add New Bookmark
       </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Save a new link to your library.
+      </p>
 
-      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label
-            htmlFor="title"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            htmlFor="add-bookmark-title"
+            className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2"
           >
             Title
           </label>
           <input
             type="text"
-            id="title"
+            id="add-bookmark-title"
             name="title"
             placeholder="My Favorite Website"
             disabled={loading}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           />
         </div>
 
         <div>
           <label
             htmlFor="url"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2"
           >
             URL
           </label>
@@ -130,12 +132,12 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
             name="url"
             placeholder="https://example.com"
             disabled={loading}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           />
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2">
+          <div className="bg-red-50 dark:bg-zinc-950 border border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg flex items-start gap-2">
             <svg
               className="w-5 h-5 flex-shrink-0 mt-0.5"
               fill="none"
@@ -156,7 +158,7 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          className="w-full bg-green-500 hover:bg-green-500 hover:scale-[1.005] hover:shadow-[0_0_16px_rgba(34,197,94,0.28)] text-black font-medium px-6 py-3 rounded-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-950 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -204,3 +206,5 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
     </div>
   )
 }
+
+

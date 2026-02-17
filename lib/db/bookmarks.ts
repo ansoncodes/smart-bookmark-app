@@ -6,6 +6,7 @@ export interface Bookmark {
   url: string
   user_id: string
   created_at: string
+  is_pinned?: boolean
 }
 
 //get bookmarks
@@ -16,6 +17,7 @@ export async function getBookmarks(userId: string): Promise<Bookmark[]> {
     .from('bookmarks')
     .select('*')
     .eq('user_id', userId)
+    .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -40,6 +42,7 @@ export async function addBookmark(
       title: title.trim(),
       url: url.trim(),
       user_id: userId,
+      is_pinned: false,
     })
     .select()
     .single()
@@ -57,16 +60,26 @@ export async function updateBookmark(
   id: string,
   userId: string,
   title: string,
-  url: string
+  url: string,
+  isPinned?: boolean
 ): Promise<Bookmark | null> {
   const supabase = await createClient()
+  const updateData: {
+    title: string
+    url: string
+    is_pinned?: boolean
+  } = {
+    title: title.trim(),
+    url: url.trim(),
+  }
+
+  if (typeof isPinned === 'boolean') {
+    updateData.is_pinned = isPinned
+  }
 
   const { data, error } = await supabase
     .from('bookmarks')
-    .update({
-      title: title.trim(),
-      url: url.trim(),
-    })
+    .update(updateData)
     .eq('id', id)
     .eq('user_id', userId) //ensures user can only update their own bookmarks
     .select()

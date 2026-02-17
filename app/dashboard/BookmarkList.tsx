@@ -2,28 +2,46 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useRef, useContext, useMemo } from 'react'
-import { deleteBookmarkAction, updateBookmarkAction } from '@/app/actions/bookmarks'
+import { deleteBookmarkAction, togglePinBookmarkAction, updateBookmarkAction } from '@/app/actions/bookmarks'
 import type { Bookmark } from '@/lib/db/bookmarks'
 import { DashboardContext } from './DashboardContent'
+import DeleteConfirmationModal from './DeleteConfirmationModal'
 
 interface BookmarkListProps {
   initialBookmarks: Bookmark[]
   userId: string
 }
 
+function sortBookmarks(items: Bookmark[]): Bookmark[] {
+  return [...items].sort((a, b) => {
+    const pinDiff = Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned))
+    if (pinDiff !== 0) return pinDiff
+
+    const timeA = new Date(a.created_at).getTime()
+    const timeB = new Date(b.created_at).getTime()
+    return timeB - timeA
+  })
+}
+
 export default function BookmarkList({
   initialBookmarks,
   userId,
 }: BookmarkListProps) {
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks)
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(sortBookmarks(initialBookmarks))
+  const [sortBy, setSortBy] = useState('newest')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [pinningIds, setPinningIds] = useState<Set<string>>(new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editUrl, setEditUrl] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [connected, setConnected] = useState(false)
+  const [deleteModalBookmarkId, setDeleteModalBookmarkId] = useState<string | null>(null)
 
   const dashboardContext = useContext(DashboardContext)
   const channelRef = useRef<any>(null)
@@ -52,6 +70,32 @@ export default function BookmarkList({
     })
   }, [bookmarks, searchQuery])
 
+  const sortedBookmarks = useMemo(() => {
+    const items = [...filteredBookmarks]
+
+    items.sort((a, b) => {
+      if (Boolean(a.is_pinned) !== Boolean(b.is_pinned)) {
+        return Boolean(b.is_pinned) ? 1 : -1
+      }
+
+      if (sortBy === 'newest') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+
+      if (sortBy === 'oldest') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      }
+
+      if (sortBy === 'az') {
+        return a.title.localeCompare(b.title)
+      }
+
+      return 0
+    })
+
+    return items
+  }, [filteredBookmarks, sortBy])
+
   //register optimistic callback
   useEffect(() => {
     if (dashboardContext?.optimisticAddCallbackRef) {
@@ -61,7 +105,7 @@ export default function BookmarkList({
           if (current.some((b) => b.id === bookmark.id)) {
             return current
           }
-          return [bookmark, ...current]
+          return sortBookmarks([bookmark, ...current])
         })
       }
     }
@@ -94,7 +138,7 @@ export default function BookmarkList({
             return current
           }
           //add to the beginning
-          return [payload.new, ...current]
+          return sortBookmarks([payload.new, ...current])
         })
       }
     )
@@ -111,7 +155,9 @@ export default function BookmarkList({
         }
 
         setBookmarks((current) =>
-          current.map((b) => (b.id === payload.new.id ? payload.new : b))
+          sortBookmarks(
+            current.map((b) => (b.id === payload.new.id ? payload.new : b))
+          )
         )
         setEditingId(null)
       }
@@ -123,8 +169,13 @@ export default function BookmarkList({
       { event: 'DELETE', schema: 'public', table: 'bookmarks' },
       (payload: any) => {
         console.log('[BookmarkList] DELETE event received')
-        
+
         setBookmarks((current) => current.filter((b) => b.id !== payload.old.id))
+        setSelectedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(payload.old.id)
+          return next
+        })
       }
     )
 
@@ -196,10 +247,13 @@ export default function BookmarkList({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this bookmark?')) return
-
     //optimistic update
     setBookmarks((current) => current.filter((b) => b.id !== id))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
     setDeletingIds((prev) => new Set(prev).add(id))
 
     try {
@@ -217,11 +271,126 @@ export default function BookmarkList({
     }
   }
 
+  function openDeleteModal(id: string) {
+    setDeleteModalBookmarkId(id)
+  }
+
+  function closeDeleteModal() {
+    if (deleteModalBookmarkId && deletingIds.has(deleteModalBookmarkId)) {
+      return
+    }
+    setDeleteModalBookmarkId(null)
+  }
+
+  async function confirmDeleteFromModal() {
+    if (!deleteModalBookmarkId) return
+    await handleDelete(deleteModalBookmarkId)
+    setDeleteModalBookmarkId(null)
+  }
+
+  async function handleCopy(id: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedId(id)
+
+      window.setTimeout(() => {
+        setCopiedId(null)
+      }, 1500)
+    } catch (error) {
+      console.error('Copy failed:', error)
+      alert('Failed to copy link')
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function toggleSelectAllVisible() {
+    const visibleIds = filteredBookmarks.map((b) => b.id)
+    const allVisibleSelected =
+      visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        for (const id of visibleIds) {
+          next.delete(id)
+        }
+      } else {
+        for (const id of visibleIds) {
+          next.add(id)
+        }
+      }
+      return next
+    })
+  }
+
+  async function handleBulkDelete() {
+    if (!confirm('Delete selected bookmarks?')) return
+
+    setIsBulkDeleting(true)
+    try {
+      for (const id of selectedIds) {
+        await deleteBookmarkAction(id)
+      }
+      setSelectedIds(new Set())
+    } catch (error) {
+      console.error('Bulk delete failed:', error)
+      alert('Failed to delete some bookmarks')
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
   function handleEditClick(bookmark: Bookmark) {
     setEditingId(bookmark.id)
     setEditTitle(bookmark.title)
     setEditUrl(bookmark.url)
     setEditError(null)
+  }
+
+  async function handleTogglePin(bookmark: Bookmark) {
+    setPinningIds((prev) => new Set(prev).add(bookmark.id))
+    const previousPinned = Boolean(bookmark.is_pinned)
+
+    //optimistic update so pin status changes instantly.
+    setBookmarks((current) =>
+      sortBookmarks(
+        current.map((b) =>
+          b.id === bookmark.id ? { ...b, is_pinned: !previousPinned } : b
+        )
+      )
+    )
+
+    try {
+      await togglePinBookmarkAction(bookmark.id, previousPinned)
+    } catch (error) {
+      console.error('Failed to toggle pin:', error)
+      //rollback optimistic change on failure.
+      setBookmarks((current) =>
+        sortBookmarks(
+          current.map((b) =>
+            b.id === bookmark.id ? { ...b, is_pinned: previousPinned } : b
+          )
+        )
+      )
+      alert('Failed to toggle pin')
+    } finally {
+      setPinningIds((prev) => {
+        const next = new Set(prev)
+        next.delete(bookmark.id)
+        return next
+      })
+    }
   }
 
   function handleCancelEdit() {
@@ -291,7 +460,7 @@ export default function BookmarkList({
       const urlObj = new URL(url)
       return urlObj.hostname.replace('www.', '')
     } catch (error) {
-      return url
+      return ''
     }
   }
 
@@ -299,38 +468,67 @@ export default function BookmarkList({
     setSearchQuery('')
   }
 
+  function handleAddFirstBookmarkClick() {
+    const formSection = document.getElementById('add-bookmark-form')
+    const titleInput = document.getElementById('add-bookmark-title') as HTMLInputElement | null
+
+    if (formSection) {
+      formSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+    if (titleInput) {
+      //delay focus slightly to avoid interrupting smooth scroll.
+      window.setTimeout(() => {
+        titleInput.focus()
+      }, 250)
+    }
+  }
+
   //empty state
   if (bookmarks.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-12 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm p-12 md:p-14 min-h-[320px] flex flex-col items-center justify-center text-center">
+        <div className="w-20 h-20 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl flex items-center justify-center shadow-sm mb-6">
+          <svg className="w-10 h-10 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No bookmarks yet</h3>
-        <p className="text-gray-600 mb-4">Add your first bookmark using the form above</p>
-        <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
-          connected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-        }`}>
-          <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></span>
-          {connected ? 'Connected' : 'Connecting...'}
-        </div>
+        <h3 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-3">
+          No bookmarks yet
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mb-8">
+          Start building your personal link library. Save articles, tools, and resources in one place.
+        </p>
+        <button
+          onClick={handleAddFirstBookmarkClick}
+          className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-black font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-950"
+        >
+          + Add your first bookmark
+        </button>
       </div>
     )
   }
 
   const isSearching = searchQuery.trim().length > 0
   const hasNoResults = isSearching && filteredBookmarks.length === 0
+  const allVisibleSelected =
+    filteredBookmarks.length > 0 &&
+    filteredBookmarks.every((bookmark) => selectedIds.has(bookmark.id))
 
   return (
     <div className="space-y-6">
-      {/* Search Bar */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="relative">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Bookmark Library
+          </h2>
+        </div>
+
+        <div className="relative w-full md:w-auto md:flex-1 md:max-w-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg
-              className="h-5 w-5 text-gray-400"
+              className="h-4 w-4 text-gray-500 dark:text-gray-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -343,23 +541,23 @@ export default function BookmarkList({
               />
             </svg>
           </div>
-          
+
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search bookmarks by title, URL, or domain..."
-            className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            placeholder="Search bookmarks..."
+            className="h-10 w-full pl-9 pr-9 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all duration-200"
           />
 
           {isSearching && (
             <button
               onClick={handleClearSearch}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               title="Clear search"
             >
               <svg
-                className="h-5 w-5"
+                className="h-4 w-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -375,72 +573,94 @@ export default function BookmarkList({
           )}
         </div>
 
-        {isSearching && (
-          <div className="mt-2 flex items-center justify-between text-sm">
-            <span className="text-gray-600">
-              Showing <span className="font-semibold text-gray-900">{filteredBookmarks.length}</span> of{' '}
-              <span className="font-semibold text-gray-900">{bookmarks.length}</span> bookmarks
-            </span>
-            
-            {hasNoResults && (
-              <span className="text-amber-600 flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                No matches found
-              </span>
-            )}
+        <div className="flex items-center gap-3 md:justify-end">
+          <div className="flex items-center">
+            <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">Sort</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="border border-gray-300 dark:border-zinc-800 rounded-md px-3 py-1 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/30 transition-all duration-200"
+            >
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="az">A-Z</option>
+            </select>
           </div>
-        )}
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {isSearching ? 'Search Results' : 'My Bookmarks'} ({filteredBookmarks.length})
-        </h2>
-        <div className="flex items-center gap-2 text-sm">
-          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></div>
-          <span className="text-gray-600">{connected ? 'Connected' : 'Connecting...'}</span>
+          <span className="inline-flex items-center px-3 py-1 text-xs bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full">
+            {bookmarks.length} bookmarks
+          </span>
         </div>
       </div>
 
-      {/* No Results State */}
-      {hasNoResults ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+      {isSearching && (
+        <p className="text-sm text-gray-400 mb-3 transition-all duration-200">
+          {hasNoResults
+            ? 'No results found'
+            : `Showing ${sortedBookmarks.length} results`}
+        </p>
+      )}
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
+          <div className="flex items-center gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleSelectAllVisible}
+                className="w-4 h-4 accent-red-600"
+              />
+              Select all visible
+            </label>
+            <p className="text-sm text-red-700 dark:text-red-300">
+              {selectedIds.size} selected
+            </p>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No bookmarks found
-          </h3>
-          <p className="text-gray-600 mb-4">
-            No bookmarks match "{searchQuery}"
-          </p>
+
           <button
-            onClick={handleClearSearch}
-            className="text-indigo-600 hover:text-indigo-700 font-medium text-sm"
+            onClick={handleBulkDelete}
+            disabled={isBulkDeleting}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
-            Clear search
+            {isBulkDeleting ? 'Deleting...' : 'Delete Selected'}
           </button>
         </div>
-      ) : (
-        /* Bookmarks list */
-        <div className="bg-white rounded-lg shadow divide-y divide-gray-200">
-          {filteredBookmarks.map((bookmark) => (
-            <div
-              key={bookmark.id}
-              className={`p-4 hover:bg-gray-50 transition-colors ${
-                deletingIds.has(bookmark.id) ? 'opacity-50' : ''
-              }`}
-            >
+      )}
+
+      {/* Bookmarks list */}
+      <div className="space-y-4">
+        {sortedBookmarks.map((bookmark) => {
+          const domain = getDomain(bookmark.url)
+          const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
+
+          return (
+          <div
+            key={bookmark.id}
+            className={`bg-white dark:bg-zinc-900 border rounded-xl shadow-sm p-5 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:shadow-md hover:scale-[1.01] cursor-pointer transition-all duration-200 ${
+              bookmark.is_pinned
+                ? 'border-green-300 dark:border-green-700/70'
+                : 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'
+            } ${
+              deletingIds.has(bookmark.id) ? 'opacity-50' : ''
+            }`}
+          >
               {editingId === bookmark.id ? (
                 //edit mode
                 <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(bookmark.id)}
+                      onChange={() => toggleSelect(bookmark.id)}
+                      className="w-4 h-4 accent-green-500"
+                      disabled={isBulkDeleting}
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Select
+                    </p>
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2">
                       Title
                     </label>
                     <input
@@ -448,12 +668,12 @@ export default function BookmarkList({
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
                       disabled={isUpdating}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/30 disabled:opacity-50 bg-white dark:bg-zinc-950 text-gray-900 dark:text-white transition-all duration-200"
                       placeholder="Bookmark title"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2">
                       URL
                     </label>
                     <input
@@ -461,13 +681,13 @@ export default function BookmarkList({
                       value={editUrl}
                       onChange={(e) => setEditUrl(e.target.value)}
                       disabled={isUpdating}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/30 disabled:opacity-50 bg-white dark:bg-zinc-950 text-gray-900 dark:text-white transition-all duration-200"
                       placeholder="https://example.com"
                     />
                   </div>
 
                   {editError && (
-                    <div className="text-sm text-red-600 flex items-center gap-2">
+                    <div className="text-sm text-red-400 flex items-center gap-2">
                       <svg
                         className="w-4 h-4"
                         fill="none"
@@ -489,14 +709,14 @@ export default function BookmarkList({
                     <button
                       onClick={() => handleUpdate(bookmark.id)}
                       disabled={isUpdating}
-                      className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      className="flex-1 bg-green-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-green-600 hover:scale-[1.01] disabled:opacity-50 transition-all duration-200"
                     >
                       {isUpdating ? 'Saving...' : 'Save Changes'}
                     </button>
                     <button
                       onClick={handleCancelEdit}
                       disabled={isUpdating}
-                      className="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                      className="px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg font-medium text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition-all duration-200"
                     >
                       Cancel
                     </button>
@@ -504,35 +724,97 @@ export default function BookmarkList({
                 </div>
               ) : (
                 //view mode
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {/* Checkbox column - fixed width */}
+                    <div className="w-5 flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(bookmark.id)}
+                        onChange={() => toggleSelect(bookmark.id)}
+                        className="w-4 h-4 accent-green-500 opacity-70 hover:opacity-100 transition"
+                        disabled={isBulkDeleting}
+                      />
+                    </div>
+
+                    {/* Icon column - fixed width with fallback */}
+                    <div className="w-8 h-8 rounded-md border border-gray-700 bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                      <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400">
+                        {(domain.charAt(0) || '?').toUpperCase()}
+                      </div>
+                      <img
+                        src={faviconUrl}
+                        alt={domain || 'Website icon'}
+                        className="absolute inset-0 w-8 h-8 rounded-md bg-gray-800 object-contain transition-transform duration-200 group-hover:scale-105"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    </div>
+
+                    {/* Text column - flexible */}
                     <a
                       href={bookmark.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group"
+                      className="group flex-1 min-w-0"
                     >
-                      <h3 className="text-base font-medium text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
+                      <h3 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white group-hover:text-green-400 transition-all duration-200 truncate">
                         {bookmark.title}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm text-gray-500 truncate">
-                          {getDomain(bookmark.url)}
-                        </p>
-                        <span className="text-gray-300">•</span>
-                        <p className="text-sm text-gray-400">
-                          {formatDate(bookmark.created_at)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                            {domain || 'Unknown domain'}
+                          </p>
+                          <span className="text-gray-500 dark:text-gray-400">&middot;</span>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(bookmark.created_at)}
+                          </p>
                       </div>
                     </a>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      onClick={() => handleTogglePin(bookmark)}
+                      disabled={pinningIds.has(bookmark.id)}
+                      className={`p-2 hover:scale-110 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        bookmark.is_pinned
+                          ? 'text-green-600 dark:text-green-500 hover:text-green-500'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-green-500'
+                      }`}
+                      title={bookmark.is_pinned ? 'Unpin bookmark' : 'Pin bookmark'}
+                    >
+                      {bookmark.is_pinned ? (
+                        <svg
+                          className="w-5 h-5 text-green-500"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.4 8.168L12 19.296l-7.334 3.866 1.4-8.168L.132 9.21l8.2-1.192L12 .587z" />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.364 1.118l1.519 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.519-4.674a1 1 0 00-.364-1.118L2.078 10.1c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.518-4.674z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+
                     <a
                       href={bookmark.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-400 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-all duration-200"
                       title="Open link"
                     >
                       <svg
@@ -552,7 +834,7 @@ export default function BookmarkList({
 
                     <button
                       onClick={() => handleEditClick(bookmark)}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-400 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-all duration-200"
                       title="Edit bookmark"
                     >
                       <svg
@@ -571,9 +853,46 @@ export default function BookmarkList({
                     </button>
 
                     <button
-                      onClick={() => handleDelete(bookmark.id)}
+                      onClick={() => handleCopy(bookmark.id, bookmark.url)}
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-md transition-all duration-200"
+                      title="Copy link"
+                    >
+                      {copiedId === bookmark.id ? (
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth={2} />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"
+                          />
+                        </svg>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => openDeleteModal(bookmark.id)}
                       disabled={deletingIds.has(bookmark.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete bookmark"
                     >
                       {deletingIds.has(bookmark.id) ? (
@@ -615,10 +934,18 @@ export default function BookmarkList({
                   </div>
                 </div>
               )}
-            </div>
-          ))}
-        </div>
-      )}
+          </div>
+          )
+        })}
+      </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalBookmarkId !== null}
+        isDeleting={deleteModalBookmarkId ? deletingIds.has(deleteModalBookmarkId) : false}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDeleteFromModal}
+      />
+
     </div>
   )
 }

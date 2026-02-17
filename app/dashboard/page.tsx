@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     return null
   }
 
-  //fetch initial bookmarks on the server
+  //fetch bookmarks on the server
   const bookmarks = await getBookmarks(user.id)
 
   return <DashboardContent initialBookmarks={bookmarks} userId={user.id} />

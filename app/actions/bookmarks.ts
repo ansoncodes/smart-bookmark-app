@@ -129,3 +129,33 @@ export async function deleteBookmarkAction(id: string) {
 
   revalidatePath('/dashboard')
 }
+
+//toggle pin bookmark
+export async function togglePinBookmarkAction(id: string, isPinned: boolean) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) {
+    throw new Error('User not authenticated')
+  }
+
+  const user = data.user
+
+  if (!id || id.trim() === '') {
+    throw new Error('Bookmark ID is required')
+  }
+
+  const { error: updateError } = await supabase
+    .from('bookmarks')
+    .update({ is_pinned: !isPinned })
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (updateError) {
+    console.error('Error toggling pin:', updateError.message)
+    throw new Error('Failed to toggle pin')
+  }
+
+  revalidatePath('/dashboard')
+}

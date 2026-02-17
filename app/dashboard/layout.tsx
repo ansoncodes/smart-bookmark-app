@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SignOutButton from './SignOutButton'
+import ThemeToggle from './ThemeToggle'
 
 export default async function DashboardLayout({
   children,
@@ -8,7 +9,6 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
-
 
   //check if user is authenticated
   const {
@@ -21,13 +21,13 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-100 text-gray-900 dark:bg-black dark:text-white">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
               <svg
-                className="w-5 h-5 text-white"
+                className="w-5 h-5 text-black"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -40,7 +40,7 @@ export default async function DashboardLayout({
                 />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
               Smart Bookmark
             </h1>
           </div>
@@ -51,25 +51,26 @@ export default async function DashboardLayout({
                 <img
                   src={user.user_metadata.avatar_url}
                   alt="Profile"
-                  className="w-8 h-8 rounded-full"
+                  className="w-8 h-8 rounded-full border border-gray-300 dark:border-zinc-800"
                 />
               )}
               <div className="hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
                   {user.user_metadata?.full_name || user.email}
                 </p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
               </div>
             </div>
 
-            {/* Sign out button */}
+            <ThemeToggle />
             <SignOutButton />
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
+      <main className="max-w-4xl mx-auto px-4 py-8">{children}</main>
     </div>
   )
 }
+
+
