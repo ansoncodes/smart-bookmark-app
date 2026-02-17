@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { addBookmark, updateBookmark, deleteBookmark } from '@/lib/db/bookmarks'
+import { addBookmarksToCollection, removeBookmarksFromCollection } from '@/lib/db/bookmarkCollections'
 
 //add Bookmark
 export async function addBookmarkAction(formData: FormData) {
@@ -48,8 +49,15 @@ export async function addBookmarkAction(formData: FormData) {
 
   //add bookmark
   console.log('[addBookmarkAction] Calling addBookmark() to insert into database...')
+  const collectionId = formData.get('collection_id')
   const result = await addBookmark(user.id, title.toString(), url.toString())
   console.log('[addBookmarkAction] ✅ Bookmark inserted, result:', result)
+
+  //add to collection via junction table if selected
+  if (collectionId && collectionId.toString().trim() && result?.id) {
+    await addBookmarksToCollection([result.id], collectionId.toString())
+    console.log('[addBookmarkAction] ✅ Added to collection:', collectionId)
+  }
 
   console.log('[addBookmarkAction] Revalidating /dashboard path...')
   revalidatePath('/dashboard')
@@ -156,6 +164,50 @@ export async function togglePinBookmarkAction(id: string, isPinned: boolean) {
     console.error('Error toggling pin:', updateError.message)
     throw new Error('Failed to toggle pin')
   }
+
+  revalidatePath('/dashboard')
+}
+
+//add bookmarks to a collection (bulk)
+export async function addToCollectionAction(
+  bookmarkIds: string[],
+  collectionId: string
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) {
+    throw new Error('User not authenticated')
+  }
+
+  if (!bookmarkIds.length) {
+    throw new Error('No bookmarks selected')
+  }
+
+  await addBookmarksToCollection(bookmarkIds, collectionId)
+
+  revalidatePath('/dashboard')
+}
+
+//remove bookmarks from a collection (bulk)
+export async function removeFromCollectionAction(
+  bookmarkIds: string[],
+  collectionId: string
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) {
+    throw new Error('User not authenticated')
+  }
+
+  if (!bookmarkIds.length) {
+    throw new Error('No bookmarks selected')
+  }
+
+  await removeBookmarksFromCollection(bookmarkIds, collectionId)
 
   revalidatePath('/dashboard')
 }

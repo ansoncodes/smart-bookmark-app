@@ -7,16 +7,23 @@ export interface Bookmark {
   user_id: string
   created_at: string
   is_pinned?: boolean
+  collection_id?: string | null
 }
 
 //get bookmarks
-export async function getBookmarks(userId: string): Promise<Bookmark[]> {
+export async function getBookmarks(userId: string, collectionId?: string): Promise<Bookmark[]> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('bookmarks')
     .select('*')
     .eq('user_id', userId)
+
+  if (collectionId) {
+    query = query.eq('collection_id', collectionId)
+  }
+
+  const { data, error } = await query
     .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
 
@@ -32,18 +39,31 @@ export async function getBookmarks(userId: string): Promise<Bookmark[]> {
 export async function addBookmark(
   userId: string,
   title: string,
-  url: string
+  url: string,
+  collectionId?: string | null
 ): Promise<Bookmark | null> {
   const supabase = await createClient()
 
+  const insertData: {
+    title: string
+    url: string
+    user_id: string
+    is_pinned: boolean
+    collection_id?: string | null
+  } = {
+    title: title.trim(),
+    url: url.trim(),
+    user_id: userId,
+    is_pinned: false,
+  }
+
+  if (collectionId) {
+    insertData.collection_id = collectionId
+  }
+
   const { data, error } = await supabase
     .from('bookmarks')
-    .insert({
-      title: title.trim(),
-      url: url.trim(),
-      user_id: userId,
-      is_pinned: false,
-    })
+    .insert(insertData)
     .select()
     .single()
 

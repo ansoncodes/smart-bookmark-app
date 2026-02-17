@@ -14,18 +14,18 @@ function SkeletonLoader() {
     return (
         <div className="space-y-3 animate-pulse">
             {/* Image skeleton */}
-            <div className="w-full h-28 rounded-lg bg-zinc-800/60 shimmer-bg" />
+            <div className="w-full h-28 rounded-lg bg-gray-200 dark:bg-zinc-800/60 shimmer-bg" />
             {/* Title skeleton */}
-            <div className="h-4 w-3/4 rounded bg-zinc-800/60 shimmer-bg" />
+            <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-zinc-800/60 shimmer-bg" />
             {/* Description skeleton lines */}
             <div className="space-y-2">
-                <div className="h-3 w-full rounded bg-zinc-800/60 shimmer-bg" />
-                <div className="h-3 w-5/6 rounded bg-zinc-800/60 shimmer-bg" />
+                <div className="h-3 w-full rounded bg-gray-200 dark:bg-zinc-800/60 shimmer-bg" />
+                <div className="h-3 w-5/6 rounded bg-gray-200 dark:bg-zinc-800/60 shimmer-bg" />
             </div>
             {/* Domain skeleton */}
             <div className="flex items-center gap-2 pt-1">
-                <div className="w-4 h-4 rounded-full bg-zinc-800/60 shimmer-bg" />
-                <div className="h-3 w-24 rounded bg-zinc-800/60 shimmer-bg" />
+                <div className="w-4 h-4 rounded-full bg-gray-200 dark:bg-zinc-800/60 shimmer-bg" />
+                <div className="h-3 w-24 rounded bg-gray-200 dark:bg-zinc-800/60 shimmer-bg" />
             </div>
         </div>
     )
@@ -34,9 +34,9 @@ function SkeletonLoader() {
 function ErrorState() {
     return (
         <div className="flex flex-col items-center justify-center py-6 text-center">
-            <div className="w-10 h-10 rounded-full bg-zinc-800/60 flex items-center justify-center mb-3">
+            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800/60 flex items-center justify-center mb-3">
                 <svg
-                    className="w-5 h-5 text-zinc-500"
+                    className="w-5 h-5 text-gray-400 dark:text-zinc-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -49,7 +49,7 @@ function ErrorState() {
                     />
                 </svg>
             </div>
-            <p className="text-xs text-zinc-500 font-medium">Preview not available</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-500 font-medium">Preview not available</p>
         </div>
     )
 }
@@ -80,7 +80,7 @@ export default function PreviewCard({
             className={`absolute left-0 ${positionClasses} z-50 w-[300px] pointer-events-none transition-all duration-200 ${animationClasses}`}
             style={{ filter: visible ? 'none' : 'blur(2px)' }}
         >
-            <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/95 backdrop-blur-xl shadow-2xl shadow-black/40 p-4 ring-1 ring-white/[0.03]">
+            <div className="rounded-xl border border-gray-200 dark:border-zinc-700/50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-2xl shadow-black/10 dark:shadow-black/40 p-4 ring-1 ring-black/[0.03] dark:ring-white/[0.03]">
                 {isLoading && <SkeletonLoader />}
 
                 {error && !isLoading && <ErrorState />}
@@ -89,7 +89,7 @@ export default function PreviewCard({
                     <div className="space-y-3">
                         {/* OG Image */}
                         {preview.image && (
-                            <div className="w-full h-28 rounded-lg overflow-hidden bg-zinc-800/40">
+                            <div className="w-full h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800/40">
                                 <img
                                     src={preview.image}
                                     alt={preview.title || 'Preview'}
@@ -103,21 +103,21 @@ export default function PreviewCard({
 
                         {/* Title */}
                         {preview.title && (
-                            <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2">
                                 {preview.title}
                             </h4>
                         )}
 
                         {/* Description */}
                         {preview.description && (
-                            <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3">
+                            <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed line-clamp-3">
                                 {preview.description}
                             </p>
                         )}
 
                         {/* Domain footer */}
                         {preview.favicon && (
-                            <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/60">
+                            <div className="flex items-center gap-2 pt-1 border-t border-gray-200/60 dark:border-zinc-800/60">
                                 <img
                                     src={preview.favicon}
                                     alt=""
@@ -126,7 +126,7 @@ export default function PreviewCard({
                                         e.currentTarget.style.display = 'none'
                                     }}
                                 />
-                                <span className="text-[11px] text-zinc-500 truncate">
+                                <span className="text-[11px] text-gray-400 dark:text-zinc-500 truncate">
                                     {(() => {
                                         try {
                                             return new URL(preview.image || '').hostname.replace('www.', '')

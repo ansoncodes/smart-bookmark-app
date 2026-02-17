@@ -2,8 +2,9 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useRef, useContext, useMemo } from 'react'
-import { deleteBookmarkAction, togglePinBookmarkAction, updateBookmarkAction } from '@/app/actions/bookmarks'
+import { deleteBookmarkAction, togglePinBookmarkAction, updateBookmarkAction, addToCollectionAction, removeFromCollectionAction } from '@/app/actions/bookmarks'
 import type { Bookmark } from '@/lib/db/bookmarks'
+import type { Collection } from '@/lib/db/collections'
 import { DashboardContext } from './DashboardContent'
 import DeleteConfirmationModal from './DeleteConfirmationModal'
 import { useLinkPreview } from './hooks/useLinkPreview'
@@ -12,6 +13,12 @@ import PreviewCard from './PreviewCard'
 interface BookmarkListProps {
   initialBookmarks: Bookmark[]
   userId: string
+  selectedCollectionId?: string | null
+  collectionName?: string | null
+  collections?: Collection[]
+  bookmarkCollectionMap?: Record<string, string[]>
+  onAddToCollection?: (bookmarkIds: string[], collectionId: string) => void
+  onRemoveFromCollection?: (bookmarkIds: string[], collectionId: string) => void
 }
 
 function sortBookmarks(items: Bookmark[]): Bookmark[] {
@@ -28,11 +35,19 @@ function sortBookmarks(items: Bookmark[]): Bookmark[] {
 export default function BookmarkList({
   initialBookmarks,
   userId,
+  selectedCollectionId,
+  collectionName,
+  collections = [],
+  bookmarkCollectionMap = {},
+  onAddToCollection,
+  onRemoveFromCollection,
 }: BookmarkListProps) {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(sortBookmarks(initialBookmarks))
   const [sortBy, setSortBy] = useState('newest')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [bulkCollectionId, setBulkCollectionId] = useState('')
+  const [isAddingToCollection, setIsAddingToCollection] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -54,15 +69,25 @@ export default function BookmarkList({
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
   const [previewShowAbove, setPreviewShowAbove] = useState(false)
 
-  //filter bookmarks based on search query
+  //filter bookmarks based on collection and search query
   const filteredBookmarks = useMemo(() => {
+    //first filter by collection using junction table map
+    let items = bookmarks
+    if (selectedCollectionId) {
+      items = items.filter((b) => {
+        const collectionIds = bookmarkCollectionMap[b.id] || []
+        return collectionIds.includes(selectedCollectionId)
+      })
+    }
+
+    //then filter by search
     if (!searchQuery.trim()) {
-      return bookmarks
+      return items
     }
 
     const query = searchQuery.toLowerCase().trim()
 
-    return bookmarks.filter((bookmark) => {
+    return items.filter((bookmark) => {
       //search in title
       const titleMatch = bookmark.title.toLowerCase().includes(query)
 
@@ -75,7 +100,7 @@ export default function BookmarkList({
 
       return titleMatch || urlMatch || domainMatch
     })
-  }, [bookmarks, searchQuery])
+  }, [bookmarks, searchQuery, selectedCollectionId, bookmarkCollectionMap])
 
   const sortedBookmarks = useMemo(() => {
     const items = [...filteredBookmarks]
@@ -528,7 +553,7 @@ export default function BookmarkList({
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Bookmark Library
+            {collectionName || 'All Bookmarks'}
           </h2>
         </div>
 
@@ -594,45 +619,113 @@ export default function BookmarkList({
             </select>
           </div>
           <span className="inline-flex items-center px-3 py-1 text-xs bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full">
-            {bookmarks.length} bookmarks
+            {/* Show total count for current context (All or Collection), ignoring search */}
+            {selectedCollectionId
+              ? bookmarks.filter((b) => (bookmarkCollectionMap[b.id] || []).includes(selectedCollectionId)).length
+              : bookmarks.length} bookmarks
           </span>
         </div>
       </div>
 
-      {isSearching && (
-        <p className="text-sm text-gray-400 mb-3 transition-all duration-200">
-          {hasNoResults
-            ? 'No results found'
-            : `Showing ${sortedBookmarks.length} results`}
-        </p>
-      )}
+      {
+        isSearching && (
+          <p className="text-sm text-gray-400 mb-3 transition-all duration-200">
+            {hasNoResults
+              ? 'No results found'
+              : `Showing ${sortedBookmarks.length} results`}
+          </p>
+        )
+      }
 
-      {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
-          <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
+      <div className="flex items-center gap-3 md:justify-end">
+        {/* Bulk actions bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 px-3 py-2 rounded-lg">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
                 type="checkbox"
                 checked={allVisibleSelected}
                 onChange={toggleSelectAllVisible}
-                className="w-4 h-4 accent-red-600"
+                className="w-4 h-4 accent-green-500"
               />
-              Select all visible
+              Select all
             </label>
-            <p className="text-sm text-red-700 dark:text-red-300">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
               {selectedIds.size} selected
-            </p>
-          </div>
+            </span>
 
-          <button
-            onClick={handleBulkDelete}
-            disabled={isBulkDeleting}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            {isBulkDeleting ? 'Deleting...' : 'Delete Selected'}
-          </button>
-        </div>
-      )}
+            {/* Add to Collection */}
+            {collections.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={bulkCollectionId}
+                  onChange={(e) => setBulkCollectionId(e.target.value)}
+                  className="border border-gray-300 dark:border-zinc-700 rounded-md px-2 py-1.5 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/30 transition-all duration-200"
+                >
+                  <option value="">Select collection</option>
+                  {collections
+                    .filter((c) => {
+                      //only show collections where at least one selected bookmark is NOT already in it
+                      const ids = Array.from(selectedIds)
+                      return ids.some((id) => !(bookmarkCollectionMap[id] || []).includes(c.id))
+                    })
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                </select>
+                <button
+                  disabled={!bulkCollectionId || isAddingToCollection}
+                  onClick={async () => {
+                    if (!bulkCollectionId) return
+                    const ids = Array.from(selectedIds)
+                    setIsAddingToCollection(true)
+                    try {
+                      await addToCollectionAction(ids, bulkCollectionId)
+                      onAddToCollection?.(ids, bulkCollectionId)
+                      setSelectedIds(new Set())
+                      setBulkCollectionId('')
+                    } catch (err) {
+                      console.error('Failed to add bookmarks to collection:', err)
+                    } finally {
+                      setIsAddingToCollection(false)
+                    }
+                  }}
+                  className="bg-green-500 text-black px-3 py-1.5 rounded-md text-sm hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  {isAddingToCollection ? 'Adding...' : 'Add'}
+                </button>
+              </div>
+            )}
+
+            {/* Remove from current collection */}
+            {selectedCollectionId && (
+              <button
+                onClick={async () => {
+                  const ids = Array.from(selectedIds)
+                  try {
+                    await removeFromCollectionAction(ids, selectedCollectionId)
+                    onRemoveFromCollection?.(ids, selectedCollectionId)
+                    setSelectedIds(new Set())
+                  } catch (err) {
+                    console.error('Failed to remove bookmarks from collection:', err)
+                  }
+                }}
+                className="bg-yellow-500 text-black px-3 py-1.5 rounded-md text-sm hover:bg-yellow-600 transition-all duration-200"
+              >
+                Remove from collection
+              </button>
+            )}
+
+            <button
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-red-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              {isBulkDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Bookmarks list */}
       <div className="space-y-4">
@@ -643,7 +736,7 @@ export default function BookmarkList({
           return (
             <div
               key={bookmark.id}
-              className={`relative bg-white dark:bg-zinc-900 border rounded-xl shadow-sm p-5 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:shadow-md hover:scale-[1.01] cursor-pointer transition-all duration-200 ${bookmark.is_pinned
+              className={`group relative bg-white dark:bg-zinc-900 border rounded-xl shadow-sm p-5 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:shadow-md hover:scale-[1.01] cursor-pointer transition-all duration-200 ${bookmark.is_pinned
                 ? 'border-green-300 dark:border-green-700/70'
                 : 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'
                 } ${deletingIds.has(bookmark.id) ? 'opacity-50' : ''
@@ -776,7 +869,7 @@ export default function BookmarkList({
                       href={bookmark.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex-1 min-w-0"
+                      className="flex-1 min-w-0"
                     >
                       <h3 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white group-hover:text-green-400 transition-all duration-200 truncate">
                         {bookmark.title}
@@ -975,6 +1068,6 @@ export default function BookmarkList({
         onConfirm={confirmDeleteFromModal}
       />
 
-    </div>
+    </div >
   )
 }

@@ -3,16 +3,21 @@
 import { addBookmarkAction } from '@/app/actions/bookmarks'
 import { useState, useRef, useContext } from 'react'
 import type { Bookmark } from '@/lib/db/bookmarks'
+import type { Collection } from '@/lib/db/collections'
 import { DashboardContext } from './DashboardContent'
 
 interface AddBookmarkFormProps {
   onBookmarkAdded?: (bookmark: Bookmark) => void
+  collections?: Collection[]
+  selectedCollectionId?: string | null
+  onAddToCollection?: (bookmarkIds: string[], collectionId: string) => void
 }
 
-export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProps) {
+export default function AddBookmarkForm({ onBookmarkAdded, collections = [], selectedCollectionId, onAddToCollection }: AddBookmarkFormProps) {
   const dashboardContext = useContext(DashboardContext)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [collectionId, setCollectionId] = useState<string>(selectedCollectionId || '')
   const formRef = useRef<HTMLFormElement>(null)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -49,13 +54,17 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
     try {
       const bookmark = await addBookmarkAction(formData)
 
-      
+
       if (bookmark) {
         if (dashboardContext?.optimisticAddCallbackRef.current) {
           dashboardContext.optimisticAddCallbackRef.current(bookmark)
         }
         if (onBookmarkAdded) {
           onBookmarkAdded(bookmark)
+        }
+        //update collection mapping if a collection was selected
+        if (collectionId && onAddToCollection) {
+          onAddToCollection([bookmark.id], collectionId)
         }
       }
 
@@ -135,6 +144,35 @@ export default function AddBookmarkForm({ onBookmarkAdded }: AddBookmarkFormProp
             className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           />
         </div>
+
+        {/* Collection selector */}
+        {collections.length > 0 && (
+          <div>
+            <label
+              htmlFor="collection"
+              className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2"
+            >
+              Collection (optional)
+            </label>
+            <select
+              id="collection"
+              value={collectionId}
+              onChange={(e) => setCollectionId(e.target.value)}
+              disabled={loading}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              <option value="">No collection</option>
+              {collections.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Hidden input for collection_id */}
+        <input type="hidden" name="collection_id" value={collectionId} />
 
         {error && (
           <div className="bg-red-50 dark:bg-zinc-950 border border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg flex items-start gap-2">
