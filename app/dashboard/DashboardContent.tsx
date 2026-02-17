@@ -71,6 +71,12 @@ export default function DashboardContent({
     }
   }
 
+  function handleCollectionUpdated(updatedCollection: Collection) {
+    setCollections((prev) =>
+      prev.map((c) => (c.id === updatedCollection.id ? updatedCollection : c))
+    )
+  }
+
   //add bookmarks to a collection (update local state)
   const handleAddToCollection = useCallback((bookmarkIds: string[], collectionId: string) => {
     setBookmarkCollections((prev) => {
@@ -111,6 +117,7 @@ export default function DashboardContent({
           onSelectCollection={setSelectedCollectionId}
           onCollectionCreated={handleCollectionCreated}
           onCollectionDeleted={handleCollectionDeleted}
+          onCollectionUpdated={handleCollectionUpdated}
         />
 
         {/* Main Content */}
