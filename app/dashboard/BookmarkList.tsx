@@ -749,6 +749,7 @@ export default function BookmarkList({
           allSelectedIds={Array.from(selectedIds)}
           bookmarkCollectionMap={bookmarkCollectionMap}
           showRemoveAction={!!selectedCollectionId}
+          onClearSelection={() => setSelectedIds(new Set())}
           onAddToCollection={async (collectionId) => {
             const ids = Array.from(selectedIds)
             await addToCollectionAction(ids, collectionId)

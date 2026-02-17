@@ -16,6 +16,7 @@ interface BulkActionBarProps {
     showRemoveAction: boolean
     bookmarkCollectionMap: Record<string, string[]>
     allSelectedIds: string[]
+    onClearSelection: () => void
 }
 
 export default function BulkActionBar({
@@ -31,6 +32,7 @@ export default function BulkActionBar({
     showRemoveAction,
     bookmarkCollectionMap,
     allSelectedIds,
+    onClearSelection,
 }: BulkActionBarProps) {
     const [isAdding, setIsAdding] = useState(false)
     const [targetCollectionId, setTargetCollectionId] = useState('')
@@ -187,6 +189,17 @@ export default function BulkActionBar({
                         {isBulkDeleting ? 'Deleting...' : 'Delete'}
                     </button>
                 </div>
+
+                {/* Close button */}
+                <button
+                    onClick={onClearSelection}
+                    className="ml-1 p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                    title="Clear selection"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
         </div>
     )
