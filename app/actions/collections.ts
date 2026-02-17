@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { createCollection } from '@/lib/db/collections'
+import { createCollection, deleteCollection } from '@/lib/db/collections'
 
 //create collection
 export async function createCollectionAction(formData: FormData) {
@@ -32,4 +32,23 @@ export async function createCollectionAction(formData: FormData) {
     revalidatePath('/dashboard')
 
     return result
+}
+
+//delete collection
+export async function deleteCollectionAction(collectionId: string) {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase.auth.getUser()
+
+    if (error || !data.user) {
+        throw new Error('User not authenticated')
+    }
+
+    if (!collectionId) {
+        throw new Error('Collection ID is required')
+    }
+
+    await deleteCollection(collectionId, data.user.id)
+
+    revalidatePath('/dashboard')
 }

@@ -48,3 +48,19 @@ export async function createCollection(
 
     return data
 }
+
+//delete collection
+export async function deleteCollection(collectionId: string, userId: string): Promise<void> {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('collections')
+        .delete()
+        .eq('id', collectionId)
+        .eq('user_id', userId)
+
+    if (error) {
+        console.error('Error deleting collection:', error.message)
+        throw new Error(`Failed to delete collection: ${error.message}`)
+    }
+}

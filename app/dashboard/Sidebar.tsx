@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import type { Collection } from '@/lib/db/collections'
-import { createCollectionAction } from '@/app/actions/collections'
+import { createCollectionAction, deleteCollectionAction } from '@/app/actions/collections'
 
 interface SidebarProps {
     collections: Collection[]
     selectedCollectionId: string | null
     onSelectCollection: (id: string | null) => void
     onCollectionCreated: (collection: Collection) => void
+    onCollectionDeleted: (collectionId: string) => void
 }
 
 export default function Sidebar({
@@ -16,11 +17,14 @@ export default function Sidebar({
     selectedCollectionId,
     onSelectCollection,
     onCollectionCreated,
+    onCollectionDeleted,
 }: SidebarProps) {
     const [isCreating, setIsCreating] = useState(false)
     const [newName, setNewName] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [deletingId, setDeletingId] = useState<string | null>(null)
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
     async function handleCreate() {
         if (!newName.trim()) return
@@ -42,6 +46,23 @@ export default function Sidebar({
             setError(err instanceof Error ? err.message : 'Failed to create collection')
         } finally {
             setLoading(false)
+        }
+    }
+
+    async function handleDelete(collectionId: string) {
+        setDeletingId(collectionId)
+        try {
+            await deleteCollectionAction(collectionId)
+            // If the deleted collection was selected, go back to All Bookmarks
+            if (selectedCollectionId === collectionId) {
+                onSelectCollection(null)
+            }
+            onCollectionDeleted(collectionId)
+        } catch (err) {
+            console.error('Failed to delete collection:', err)
+        } finally {
+            setDeletingId(null)
+            setConfirmDeleteId(null)
         }
     }
 
@@ -86,19 +107,56 @@ export default function Sidebar({
 
                     {/* Collection items */}
                     {collections.map((collection) => (
-                        <button
-                            key={collection.id}
-                            onClick={() => onSelectCollection(collection.id)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${selectedCollectionId === collection.id
-                                ? 'bg-green-500/10 text-green-600 dark:text-green-400 font-medium'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white'
-                                }`}
-                        >
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                            </svg>
-                            <span className="truncate">{collection.name}</span>
-                        </button>
+                        <div key={collection.id} className="group relative">
+                            <button
+                                onClick={() => onSelectCollection(collection.id)}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${selectedCollectionId === collection.id
+                                    ? 'bg-green-500/10 text-green-600 dark:text-green-400 font-medium'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                <span className="truncate">{collection.name}</span>
+                            </button>
+
+                            {/* Delete button — visible on hover */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setConfirmDeleteId(collection.id)
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-md text-gray-400 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
+                                title="Delete collection"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+
+                            {/* Confirmation overlay */}
+                            {confirmDeleteId === collection.id && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-lg border border-red-200 dark:border-red-500/20">
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            onClick={() => handleDelete(collection.id)}
+                                            disabled={deletingId === collection.id}
+                                            className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-md hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 transition-all duration-200"
+                                        >
+                                            {deletingId === collection.id ? '...' : 'Delete'}
+                                        </button>
+                                        <button
+                                            onClick={() => setConfirmDeleteId(null)}
+                                            disabled={deletingId === collection.id}
+                                            className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-zinc-700 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition-all duration-200"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </nav>
 

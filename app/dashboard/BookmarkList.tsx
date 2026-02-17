@@ -716,7 +716,7 @@ export default function BookmarkList({
               )}
             </div>
           </div>
-          <span className="inline-flex items-center px-3 py-1 text-xs bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full">
+          <span className="inline-flex items-center px-2.5 py-1 text-xs text-gray-400 dark:text-white/40">
             {/* Show total count for current context (All or Collection), ignoring search */}
             {selectedCollectionId
               ? bookmarks.filter((b) => (bookmarkCollectionMap[b.id] || []).includes(selectedCollectionId)).length

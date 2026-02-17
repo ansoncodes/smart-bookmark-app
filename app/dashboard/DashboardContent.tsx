@@ -61,6 +61,16 @@ export default function DashboardContent({
     setCollections((prev) => [...prev, collection])
   }
 
+  function handleCollectionDeleted(collectionId: string) {
+    setCollections((prev) => prev.filter((c) => c.id !== collectionId))
+    // Also clean up bookmark_collections entries for this collection
+    setBookmarkCollections((prev) => prev.filter((bc) => bc.collection_id !== collectionId))
+    // If the deleted collection was selected, go back to All Bookmarks
+    if (selectedCollectionId === collectionId) {
+      setSelectedCollectionId(null)
+    }
+  }
+
   //add bookmarks to a collection (update local state)
   const handleAddToCollection = useCallback((bookmarkIds: string[], collectionId: string) => {
     setBookmarkCollections((prev) => {
@@ -100,6 +110,7 @@ export default function DashboardContent({
           selectedCollectionId={selectedCollectionId}
           onSelectCollection={setSelectedCollectionId}
           onCollectionCreated={handleCollectionCreated}
+          onCollectionDeleted={handleCollectionDeleted}
         />
 
         {/* Main Content */}
