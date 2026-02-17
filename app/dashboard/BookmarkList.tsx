@@ -2,6 +2,9 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useRef, useContext, useMemo } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import BulkActionBar from './BulkActionBar'
 import { deleteBookmarkAction, togglePinBookmarkAction, updateBookmarkAction, addToCollectionAction, removeFromCollectionAction } from '@/app/actions/bookmarks'
 import type { Bookmark } from '@/lib/db/bookmarks'
 import type { Collection } from '@/lib/db/collections'
@@ -48,8 +51,6 @@ export default function BookmarkList({
   const [sortBy, setSortBy] = useState('newest')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
-  const [bulkCollectionId, setBulkCollectionId] = useState('')
-  const [isAddingToCollection, setIsAddingToCollection] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -63,6 +64,11 @@ export default function BookmarkList({
   const [deleteModalBookmarkId, setDeleteModalBookmarkId] = useState<string | null>(null)
   const [showPermissionModal, setShowPermissionModal] = useState(false)
   const [hasVerifiedPermission, setHasVerifiedPermission] = useState(false)
+
+  // Reset selection when collection changes
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [selectedCollectionId])
 
   const dashboardContext = useContext(DashboardContext)
   const channelRef = useRef<any>(null)
@@ -656,100 +662,32 @@ export default function BookmarkList({
 
       <div className="flex items-center gap-3 md:justify-end">
         {/* Bulk actions bar */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 px-3 py-2 rounded-lg">
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                checked={allVisibleSelected}
-                onChange={toggleSelectAllVisible}
-                className="w-4 h-4 accent-green-500"
-              />
-              Select all
-            </label>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {selectedIds.size} selected
-            </span>
-
-            {/* Open Selected */}
-            <button
-              onClick={handleOpenSelected}
-              className="bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all duration-200 font-medium whitespace-nowrap"
-            >
-              Open Selected
-            </button>
-
-            {/* Add to Collection */}
-            {collections.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={bulkCollectionId}
-                  onChange={(e) => setBulkCollectionId(e.target.value)}
-                  className="border border-gray-300 dark:border-zinc-700 rounded-md px-2 py-1.5 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/30 transition-all duration-200"
-                >
-                  <option value="">Select collection</option>
-                  {collections
-                    .filter((c) => {
-                      //only show collections where at least one selected bookmark is NOT already in it
-                      const ids = Array.from(selectedIds)
-                      return ids.some((id) => !(bookmarkCollectionMap[id] || []).includes(c.id))
-                    })
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
-                <button
-                  disabled={!bulkCollectionId || isAddingToCollection}
-                  onClick={async () => {
-                    if (!bulkCollectionId) return
-                    const ids = Array.from(selectedIds)
-                    setIsAddingToCollection(true)
-                    try {
-                      await addToCollectionAction(ids, bulkCollectionId)
-                      onAddToCollection?.(ids, bulkCollectionId)
-                      setSelectedIds(new Set())
-                      setBulkCollectionId('')
-                    } catch (err) {
-                      console.error('Failed to add bookmarks to collection:', err)
-                    } finally {
-                      setIsAddingToCollection(false)
-                    }
-                  }}
-                  className="bg-green-500 text-black px-3 py-1.5 rounded-md text-sm hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                >
-                  {isAddingToCollection ? 'Adding...' : 'Add'}
-                </button>
-              </div>
-            )}
-
-            {/* Remove from current collection */}
-            {selectedCollectionId && (
-              <button
-                onClick={async () => {
-                  const ids = Array.from(selectedIds)
-                  try {
-                    await removeFromCollectionAction(ids, selectedCollectionId)
-                    onRemoveFromCollection?.(ids, selectedCollectionId)
-                    setSelectedIds(new Set())
-                  } catch (err) {
-                    console.error('Failed to remove bookmarks from collection:', err)
-                  }
-                }}
-                className="bg-yellow-500 text-black px-3 py-1.5 rounded-md text-sm hover:bg-yellow-600 transition-all duration-200"
-              >
-                Remove from collection
-              </button>
-            )}
-
-            <button
-              onClick={handleBulkDelete}
-              disabled={isBulkDeleting}
-              className="bg-red-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-            >
-              {isBulkDeleting ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
-        )}
+        {/* Bulk actions bar */}
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          allVisibleSelected={allVisibleSelected}
+          onToggleSelectAll={toggleSelectAllVisible}
+          onOpenSelected={handleOpenSelected}
+          onDelete={handleBulkDelete}
+          isBulkDeleting={isBulkDeleting}
+          collections={collections}
+          allSelectedIds={Array.from(selectedIds)}
+          bookmarkCollectionMap={bookmarkCollectionMap}
+          showRemoveAction={!!selectedCollectionId}
+          onAddToCollection={async (collectionId) => {
+            const ids = Array.from(selectedIds)
+            await addToCollectionAction(ids, collectionId)
+            onAddToCollection?.(ids, collectionId)
+            setSelectedIds(new Set())
+          }}
+          onRemoveFromCollection={async () => {
+            if (!selectedCollectionId) return
+            const ids = Array.from(selectedIds)
+            await removeFromCollectionAction(ids, selectedCollectionId)
+            onRemoveFromCollection?.(ids, selectedCollectionId)
+            setSelectedIds(new Set())
+          }}
+        />
       </div>
 
       {/* Bookmarks list */}
