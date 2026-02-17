@@ -105,11 +105,13 @@ export default function DashboardContent({
         {/* Main Content */}
         <div className="flex-1 min-w-0 space-y-6">
           {/* Add Bookmark Form */}
-          <AddBookmarkForm
-            collections={collections}
-            selectedCollectionId={selectedCollectionId}
-            onAddToCollection={handleAddToCollection}
-          />
+          <div className="relative z-10">
+            <AddBookmarkForm
+              collections={collections}
+              selectedCollectionId={selectedCollectionId}
+              onAddToCollection={handleAddToCollection}
+            />
+          </div>
 
           {/* Bookmark List with Real-time */}
           <BookmarkList

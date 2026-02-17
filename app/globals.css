@@ -61,3 +61,16 @@ body {
       rgba(255, 255, 255, 0.03) 75%);
   background-size: 200% 100%;
 }
+
+/* Style native select dropdown options */
+select option {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2937;
+}
+
+[data-theme="dark"] select option {
+  background: #18181b;
+  color: rgba(255, 255, 255, 0.9);
+}

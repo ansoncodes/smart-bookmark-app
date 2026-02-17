@@ -51,7 +51,6 @@ export async function addBookmark(
     url: string
     user_id: string
     is_pinned: boolean
-    collection_id?: string | null
     description?: string | null
   } = {
     title: title.trim(),
@@ -60,9 +59,9 @@ export async function addBookmark(
     is_pinned: false,
   }
 
-  if (collectionId) {
-    insertData.collection_id = collectionId
-  }
+  // Note: collection_id is NOT a column on bookmarks table.
+  // Collection assignment is handled via the bookmark_collections junction table
+  // after the bookmark is created.
 
   if (description && description.trim()) {
     insertData.description = description.trim()
@@ -75,8 +74,8 @@ export async function addBookmark(
     .single()
 
   if (error) {
-    console.error('Error adding bookmark:', error.message)
-    throw new Error('Failed to add bookmark')
+    console.error('Error adding bookmark:', error.message, error)
+    throw new Error(`Failed to add bookmark: ${error.message}`)
   }
 
   return data

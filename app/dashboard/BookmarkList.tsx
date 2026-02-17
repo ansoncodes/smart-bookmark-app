@@ -66,11 +66,26 @@ export default function BookmarkList({
   const [showPermissionModal, setShowPermissionModal] = useState(false)
   const [hasVerifiedPermission, setHasVerifiedPermission] = useState(false)
   const [isOpenAllMode, setIsOpenAllMode] = useState(false)
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
+  const sortDropdownRef = useRef<HTMLDivElement>(null)
 
   // Reset selection when collection changes
   useEffect(() => {
     setSelectedIds(new Set())
   }, [selectedCollectionId])
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target as Node)) {
+        setSortDropdownOpen(false)
+      }
+    }
+    if (sortDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [sortDropdownOpen])
 
   const dashboardContext = useContext(DashboardContext)
   const channelRef = useRef<any>(null)
@@ -669,15 +684,37 @@ export default function BookmarkList({
 
           <div className="flex items-center">
             <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">Sort</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="border border-gray-300 dark:border-zinc-800 rounded-md px-3 py-1 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/30 transition-all duration-200"
-            >
-              <option value="newest">Newest</option>
-              <option value="oldest">Oldest</option>
-              <option value="az">A-Z</option>
-            </select>
+            <div className="relative" ref={sortDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                className="border border-gray-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-white/[0.04] text-gray-900 dark:text-white/90 focus:outline-none focus:ring-2 focus:ring-green-500/30 transition-all duration-200 flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+              >
+                <span>{sortBy === 'newest' ? 'Newest' : sortBy === 'oldest' ? 'Oldest' : 'A-Z'}</span>
+                <svg className={`w-3.5 h-3.5 text-gray-400 dark:text-white/30 transition-transform duration-200 ${sortDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {sortDropdownOpen && (
+                <div className="absolute right-0 z-50 mt-1 w-32 rounded-xl overflow-hidden border bg-white border-gray-200 shadow-lg dark:bg-zinc-900 dark:border-white/[0.1] dark:shadow-black/30">
+                  <div className="py-1">
+                    {[{ value: 'newest', label: 'Newest' }, { value: 'oldest', label: 'Oldest' }, { value: 'az', label: 'A-Z' }].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => { setSortBy(option.value); setSortDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors duration-100 ${sortBy === option.value
+                          ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-white/80 dark:hover:bg-white/[0.06]'
+                          }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <span className="inline-flex items-center px-3 py-1 text-xs bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full">
             {/* Show total count for current context (All or Collection), ignoring search */}

@@ -19,12 +19,14 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
   const [error, setError] = useState<string | null>(null)
   const [collectionId, setCollectionId] = useState<string>(selectedCollectionId || '')
   const [isExpanded, setIsExpanded] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState(0)
+  const [overflowVisible, setOverflowVisible] = useState(false)
 
-  // Measure the form content height whenever expanded state changes
   const measureHeight = useCallback(() => {
     if (contentRef.current) {
       setContentHeight(contentRef.current.scrollHeight)
@@ -34,19 +36,39 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
   useEffect(() => {
     if (isExpanded) {
       measureHeight()
-      // Also re-measure after a brief delay in case content isn't fully rendered
       const timer = setTimeout(measureHeight, 50)
-      return () => clearTimeout(timer)
+      // Allow overflow after animation completes so dropdown isn't clipped
+      const overflowTimer = setTimeout(() => setOverflowVisible(true), 850)
+      return () => { clearTimeout(timer); clearTimeout(overflowTimer) }
+    } else {
+      setOverflowVisible(false)
     }
   }, [isExpanded, measureHeight])
 
-  // Auto-focus title input when expanded
   useEffect(() => {
     if (isExpanded && titleInputRef.current) {
       setTimeout(() => {
         titleInputRef.current?.focus()
       }, 300)
     }
+  }, [isExpanded])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [dropdownOpen])
+
+  // Close dropdown when form collapses
+  useEffect(() => {
+    if (!isExpanded) setDropdownOpen(false)
   }, [isExpanded])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -58,7 +80,6 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
     const title = formData.get('title') as string
     const url = formData.get('url') as string
 
-    //client-side validation
     if (!title || title.trim() === '') {
       setError('Please enter a title')
       setLoading(false)
@@ -71,7 +92,6 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
       return
     }
 
-    //validate URL format
     try {
       new URL(url)
     } catch {
@@ -90,32 +110,27 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
         if (onBookmarkAdded) {
           onBookmarkAdded(bookmark)
         }
-        //update collection mapping if a collection was selected
         if (collectionId && onAddToCollection) {
           onAddToCollection([bookmark.id], collectionId)
         }
       }
 
-      // Clear form and collapse on success
       formRef.current?.reset()
       setCollectionId(selectedCollectionId || '')
       setIsExpanded(false)
 
-      // Show success message briefly
-      const successMessage = document.createElement('div')
-      successMessage.className =
-        'fixed top-4 right-4 bg-green-500 text-black px-6 py-3 rounded-lg shadow-sm z-50 flex items-center gap-2'
-      successMessage.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      // Toast notification
+      const toast = document.createElement('div')
+      toast.className =
+        'fixed top-4 right-4 bg-gray-100 dark:bg-white/[0.08] backdrop-blur-xl border border-gray-200 dark:border-white/[0.1] text-gray-800 dark:text-white/90 px-5 py-3 rounded-xl z-50 flex items-center gap-2.5 text-sm shadow-sm'
+      toast.innerHTML = `
+        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
         </svg>
-        <span>Bookmark added successfully!</span>
+        <span>Bookmark added</span>
       `
-      document.body.appendChild(successMessage)
-
-      setTimeout(() => {
-        successMessage.remove()
-      }, 3000)
+      document.body.appendChild(toast)
+      setTimeout(() => toast.remove(), 2500)
     } catch (err) {
       console.error('[AddBookmarkForm] Error adding bookmark:', err)
       setError(
@@ -135,100 +150,78 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
     setCollectionId(selectedCollectionId || '')
   }
 
+  // Shared input classes — light + dark
+  const inputClass =
+    'w-full px-3 py-2 text-sm rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ' +
+    'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 ' +
+    'focus:outline-none focus:border-gray-400 focus:bg-white focus:ring-1 focus:ring-gray-200 ' +
+    'dark:bg-white/[0.04] dark:border-white/[0.08] dark:text-white/90 dark:placeholder-white/30 ' +
+    'dark:focus:border-white/[0.2] dark:focus:bg-white/[0.06] dark:focus:ring-0'
+
   return (
     <div id="add-bookmark-form">
-      {/* Collapsed state - Always in DOM, hidden when expanded */}
+      {/* Collapsed state */}
       <div
         className="transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={{
-          maxHeight: isExpanded ? '0px' : '80px',
+          maxHeight: isExpanded ? '0px' : '64px',
           opacity: isExpanded ? 0 : 1,
           overflow: 'hidden',
-          transform: isExpanded ? 'translateY(-8px)' : 'translateY(0)',
+          transform: isExpanded ? 'translateY(-6px)' : 'translateY(0)',
         }}
       >
         <button
           onClick={() => setIsExpanded(true)}
-          className="w-full group bg-white/5 dark:bg-white/5 border border-white/10 dark:border-white/10 rounded-xl px-5 py-3.5 hover:bg-white/10 hover:border-white/20 transition-all duration-300 flex items-center gap-3 text-left"
+          className="w-full group rounded-2xl px-4 py-3 transition-all duration-200 flex items-center gap-3 text-left bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:bg-white/[0.03] dark:border-white/[0.08] dark:hover:bg-white/[0.06] dark:hover:border-white/[0.14]"
           tabIndex={isExpanded ? -1 : 0}
         >
-          <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-all duration-300">
-            <svg
-              className="w-5 h-5 text-green-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
+          <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/15 transition-all duration-200">
+            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              Add Bookmark
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Press to add a new link to your library
-            </p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-800 dark:text-white/80">Add Bookmark</p>
+            <p className="text-xs text-gray-500 dark:text-white/40">Save a new link to your library</p>
           </div>
-
         </button>
       </div>
 
-      {/* Expanded state - Always in DOM, slides down smoothly */}
+      {/* Expanded state */}
       <div
-        className="transition-all duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden"
+        className={`transition-all duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${overflowVisible ? 'overflow-visible' : 'overflow-hidden'}`}
         style={{
           maxHeight: isExpanded ? `${contentHeight + 40}px` : '0px',
           opacity: isExpanded ? 1 : 0,
-          transform: isExpanded ? 'translateY(0)' : 'translateY(-12px)',
+          transform: isExpanded ? 'translateY(0)' : 'translateY(-10px)',
         }}
       >
         <div
           ref={contentRef}
-          className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm p-5"
+          className="rounded-2xl p-4 bg-white border border-gray-200 dark:bg-white/[0.03] dark:border-white/[0.08]"
         >
-          <div className="flex items-start justify-between mb-4">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                Add New Bookmark
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                Save a new link to your library
-              </p>
+              <h2 className="text-base font-medium text-gray-800 dark:text-white/80">New Bookmark</h2>
+              <p className="text-xs text-gray-500 dark:text-white/40 mt-0.5">Save a link to your library</p>
             </div>
             <button
               onClick={handleCancel}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-colors"
+              className="p-1.5 rounded-lg transition-colors duration-150 hover:bg-gray-200 dark:hover:bg-white/[0.06]"
               title="Close"
               tabIndex={isExpanded ? 0 : -1}
             >
-              <svg
-                className="w-5 h-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+              <svg className="w-4 h-4 text-gray-400 dark:text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
+            {/* Title */}
             <div>
-              <label
-                htmlFor="add-bookmark-title"
-                className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2"
-              >
+              <label htmlFor="add-bookmark-title" className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
                 Title
               </label>
               <input
@@ -236,18 +229,16 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
                 type="text"
                 id="add-bookmark-title"
                 name="title"
-                placeholder="My Favorite Website"
+                placeholder="e.g. My Favorite Article"
                 disabled={loading}
                 tabIndex={isExpanded ? 0 : -1}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className={inputClass}
               />
             </div>
 
+            {/* URL */}
             <div>
-              <label
-                htmlFor="url"
-                className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2"
-              >
+              <label htmlFor="url" className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
                 URL
               </label>
               <input
@@ -257,124 +248,112 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
                 placeholder="https://example.com"
                 disabled={loading}
                 tabIndex={isExpanded ? 0 : -1}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className={inputClass}
               />
             </div>
 
+            {/* Description */}
             <div>
-              <label
-                htmlFor="description"
-                className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2"
-              >
-                Description (optional)
+              <label htmlFor="description" className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
+                Description
+                <span className="text-gray-400 dark:text-white/25 ml-1">optional</span>
               </label>
               <textarea
                 id="description"
                 name="description"
-                placeholder="Add a note or description about this bookmark..."
-                rows={3}
+                placeholder="Add a short note..."
+                rows={2}
                 disabled={loading}
                 tabIndex={isExpanded ? 0 : -1}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 resize-vertical"
+                className={`${inputClass} resize-none`}
               />
             </div>
 
-            {/* Collection selector */}
+            {/* Collection selector — custom dropdown */}
             {collections.length > 0 && (
-              <div>
-                <label
-                  htmlFor="collection"
-                  className="block text-xs text-gray-500 dark:text-gray-400 font-medium mb-2"
-                >
-                  Collection (optional)
+              <div className="relative" ref={dropdownRef}>
+                <label className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
+                  Collection
+                  <span className="text-gray-400 dark:text-white/25 ml-1">optional</span>
                 </label>
-                <select
-                  id="collection"
-                  value={collectionId}
-                  onChange={(e) => setCollectionId(e.target.value)}
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
                   disabled={loading}
                   tabIndex={isExpanded ? 0 : -1}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-white focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className={`${inputClass} appearance-none cursor-pointer pr-8 text-left relative`}
                 >
-                  <option value="">No collection</option>
-                  {collections.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  <span className={collectionId ? 'text-gray-900 dark:text-white/90' : 'text-gray-400 dark:text-white/30'}>
+                    {collectionId ? collections.find(c => c.id === collectionId)?.name || 'None' : 'None'}
+                  </span>
+                  <svg className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/30 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Dropdown menu */}
+                {dropdownOpen && (
+                  <div className="absolute z-50 mt-1 w-full rounded-xl overflow-hidden border bg-white border-gray-200 shadow-lg dark:bg-zinc-900 dark:border-white/[0.1] dark:shadow-black/30">
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => { setCollectionId(''); setDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors duration-100 ${collectionId === ''
+                          ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-white/80 dark:hover:bg-white/[0.06]'
+                          }`}
+                      >
+                        None
+                      </button>
+                      {collections.map((c) => (
+                        <button
+                          type="button"
+                          key={c.id}
+                          onClick={() => { setCollectionId(c.id); setDropdownOpen(false); }}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors duration-100 ${collectionId === c.id
+                            ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+                            : 'text-gray-700 hover:bg-gray-100 dark:text-white/80 dark:hover:bg-white/[0.06]'
+                            }`}
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Hidden input for collection_id */}
             <input type="hidden" name="collection_id" value={collectionId} />
 
+            {/* Error */}
             {error && (
-              <div className="bg-red-50 dark:bg-zinc-950 border border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg flex items-start gap-2">
-                <svg
-                  className="w-5 h-5 flex-shrink-0 mt-0.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
+              <div className="flex items-start gap-2 text-red-600 dark:text-red-400/90 bg-red-50 dark:bg-red-500/[0.06] border border-red-200 dark:border-red-500/[0.1] rounded-lg px-3 py-2.5">
+                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm">{error}</span>
+                <span className="text-xs">{error}</span>
               </div>
             )}
 
-            <div className="flex gap-2 pt-2">
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
               <button
                 type="submit"
                 disabled={loading}
                 tabIndex={isExpanded ? 0 : -1}
-                className="flex-1 bg-green-500 hover:bg-green-600 hover:scale-[1.01] text-black font-medium px-6 py-2.5 rounded-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                className="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <svg
-                      className="w-5 h-5 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <span>Adding...</span>
+                    <span>Adding…</span>
                   </>
                 ) : (
-                  <>
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span>Add Bookmark</span>
-                  </>
+                  <span>Add Bookmark</span>
                 )}
               </button>
               <button
@@ -382,7 +361,7 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
                 onClick={handleCancel}
                 disabled={loading}
                 tabIndex={isExpanded ? 0 : -1}
-                className="px-6 py-2.5 border border-gray-300 dark:border-zinc-800 rounded-lg font-medium text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 bg-transparent border border-gray-200 hover:bg-gray-100 hover:text-gray-800 dark:text-white/60 dark:border-white/[0.1] dark:hover:bg-white/[0.05] dark:hover:text-white/80"
               >
                 Cancel
               </button>
