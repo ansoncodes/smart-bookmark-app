@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import BulkActionBar from './BulkActionBar'
 import { deleteBookmarkAction, togglePinBookmarkAction, updateBookmarkAction, addToCollectionAction, removeFromCollectionAction } from '@/app/actions/bookmarks'
+import ShareModal from './ShareModal'
 import type { Bookmark } from '@/lib/db/bookmarks'
 import type { Collection } from '@/lib/db/collections'
 import { DashboardContext } from './DashboardContent'
@@ -67,6 +68,7 @@ export default function BookmarkList({
   const [hasVerifiedPermission, setHasVerifiedPermission] = useState(false)
   const [isOpenAllMode, setIsOpenAllMode] = useState(false)
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const sortDropdownRef = useRef<HTMLDivElement>(null)
 
   // Reset selection when collection changes
@@ -682,6 +684,19 @@ export default function BookmarkList({
             </button>
           )}
 
+          {selectedCollectionId && (
+            <button
+              onClick={() => setShareModalOpen(true)}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
+              title="Share collection"
+            >
+              <svg className="w-4 h-4 text-gray-400 dark:text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Share
+            </button>
+          )}
+
           <div className="flex items-center">
             <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">Sort</span>
             <div className="relative" ref={sortDropdownRef}>
@@ -1145,6 +1160,14 @@ export default function BookmarkList({
         onConfirm={confirmDeleteFromModal}
       />
 
+      {selectedCollectionId && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          collectionId={selectedCollectionId}
+          collectionName={collectionName || 'Collection'}
+        />
+      )}
     </div >
   )
 }

@@ -64,3 +64,27 @@ export async function deleteCollection(collectionId: string, userId: string): Pr
         throw new Error(`Failed to delete collection: ${error.message}`)
     }
 }
+
+//update collection
+export async function updateCollection(
+    collectionId: string,
+    userId: string,
+    name: string
+): Promise<Collection | null> {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('collections')
+        .update({ name: name.trim() })
+        .eq('id', collectionId)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+    if (error) {
+        console.error('Error updating collection:', error.message)
+        throw new Error('Failed to update collection')
+    }
+
+    return data
+}

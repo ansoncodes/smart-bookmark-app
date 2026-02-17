@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { createCollection, deleteCollection } from '@/lib/db/collections'
+import { createCollection, deleteCollection, updateCollection } from '@/lib/db/collections'
 
 //create collection
 export async function createCollectionAction(formData: FormData) {
@@ -51,4 +51,30 @@ export async function deleteCollectionAction(collectionId: string) {
     await deleteCollection(collectionId, data.user.id)
 
     revalidatePath('/dashboard')
+}
+
+//update collection
+export async function updateCollectionAction(collectionId: string, name: string) {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase.auth.getUser()
+
+    if (error || !data.user) {
+        throw new Error('User not authenticated')
+    }
+
+    //validate name
+    if (!name || name.toString().trim() === '') {
+        throw new Error('Collection name is required')
+    }
+
+    if (name.toString().trim().length > 100) {
+        throw new Error('Collection name must be less than 100 characters')
+    }
+
+    const updated = await updateCollection(collectionId, data.user.id, name.toString())
+
+    revalidatePath('/dashboard')
+
+    return updated
 }

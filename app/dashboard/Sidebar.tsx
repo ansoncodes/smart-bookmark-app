@@ -1,8 +1,6 @@
-'use client'
-
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Collection } from '@/lib/db/collections'
-import { createCollectionAction, deleteCollectionAction } from '@/app/actions/collections'
+import { createCollectionAction, deleteCollectionAction, updateCollectionAction } from '@/app/actions/collections'
 
 interface SidebarProps {
     collections: Collection[]
@@ -10,6 +8,7 @@ interface SidebarProps {
     onSelectCollection: (id: string | null) => void
     onCollectionCreated: (collection: Collection) => void
     onCollectionDeleted: (collectionId: string) => void
+    onCollectionUpdated: (collection: Collection) => void
 }
 
 export default function Sidebar({
@@ -18,6 +17,7 @@ export default function Sidebar({
     onSelectCollection,
     onCollectionCreated,
     onCollectionDeleted,
+    onCollectionUpdated,
 }: SidebarProps) {
     const [isCreating, setIsCreating] = useState(false)
     const [newName, setNewName] = useState('')
@@ -25,6 +25,17 @@ export default function Sidebar({
     const [error, setError] = useState<string | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+    // Edit state
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [editName, setEditName] = useState('')
+    const editInputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        if (editingId && editInputRef.current) {
+            editInputRef.current.focus()
+        }
+    }, [editingId])
 
     async function handleCreate() {
         if (!newName.trim()) return
@@ -66,6 +77,33 @@ export default function Sidebar({
         }
     }
 
+    async function handleUpdate(collectionId: string) {
+        if (!editName.trim()) return
+
+        setLoading(true)
+        setError(null)
+
+        try {
+            const updated = await updateCollectionAction(collectionId, editName.trim())
+            if (updated) {
+                onCollectionUpdated(updated)
+            }
+            setEditingId(null)
+            setEditName('')
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update collection')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    function startEditing(collection: Collection) {
+        setEditingId(collection.id)
+        setEditName(collection.name)
+        setError(null)
+        setConfirmDeleteId(null) // Close delete confirmation if open
+    }
+
     function handleKeyDown(e: React.KeyboardEvent) {
         if (e.key === 'Enter') {
             e.preventDefault()
@@ -74,6 +112,18 @@ export default function Sidebar({
         if (e.key === 'Escape') {
             setIsCreating(false)
             setNewName('')
+            setError(null)
+        }
+    }
+
+    function handleEditKeyDown(e: React.KeyboardEvent, collectionId: string) {
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            handleUpdate(collectionId)
+        }
+        if (e.key === 'Escape') {
+            setEditingId(null)
+            setEditName('')
             setError(null)
         }
     }
@@ -108,32 +158,80 @@ export default function Sidebar({
                     {/* Collection items */}
                     {collections.map((collection) => (
                         <div key={collection.id} className="group relative">
-                            <button
-                                onClick={() => onSelectCollection(collection.id)}
-                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${selectedCollectionId === collection.id
-                                    ? 'bg-green-500/10 text-green-600 dark:text-green-400 font-medium'
-                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                </svg>
-                                <span className="truncate">{collection.name}</span>
-                            </button>
+                            {editingId === collection.id ? (
+                                // Editing Mode
+                                <div className="px-1 py-1">
+                                    <input
+                                        ref={editInputRef}
+                                        type="text"
+                                        value={editName}
+                                        onChange={(e) => setEditName(e.target.value)}
+                                        onKeyDown={(e) => handleEditKeyDown(e, collection.id)}
+                                        className="w-full px-2 py-1 text-sm border border-green-500 rounded bg-white dark:bg-zinc-800 focus:outline-none"
+                                    />
+                                    <div className="flex gap-1 mt-1 justify-end">
+                                        <button
+                                            onClick={() => handleUpdate(collection.id)}
+                                            className="text-xs text-green-600 font-medium px-1.5 py-0.5 hover:bg-green-50 rounded"
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={() => setEditingId(null)}
+                                            className="text-xs text-gray-500 px-1.5 py-0.5 hover:bg-gray-100 rounded"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                // Display Mode
+                                <>
+                                    <button
+                                        onClick={() => onSelectCollection(collection.id)}
+                                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 pr-12 ${selectedCollectionId === collection.id
+                                            ? 'bg-green-500/10 text-green-600 dark:text-green-400 font-medium'
+                                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white'
+                                            }`}
+                                    >
+                                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                        </svg>
+                                        <span className="truncate">{collection.name}</span>
+                                    </button>
 
-                            {/* Delete button — visible on hover */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    setConfirmDeleteId(collection.id)
-                                }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-md text-gray-400 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
-                                title="Delete collection"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
+                                    {/* Action Buttons (Edit/Delete) */}
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                                        {/* Edit Button */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                startEditing(collection)
+                                            }}
+                                            className="p-1 rounded-md text-gray-400 dark:text-white/30 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                                            title="Rename collection"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                        </button>
+
+                                        {/* Delete Button */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                setConfirmDeleteId(collection.id)
+                                            }}
+                                            className="p-1 rounded-md text-gray-400 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                                            title="Delete collection"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </>
+                            )}
 
                             {/* Confirmation overlay */}
                             {confirmDeleteId === collection.id && (
@@ -174,7 +272,7 @@ export default function Sidebar({
                                 disabled={loading}
                                 className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 disabled:opacity-50 transition-all duration-200"
                             />
-                            {error && (
+                            {error && !editingId && (
                                 <p className="text-xs text-red-500">{error}</p>
                             )}
                             <div className="flex gap-1.5">
