@@ -6,6 +6,8 @@ import { deleteBookmarkAction, togglePinBookmarkAction, updateBookmarkAction } f
 import type { Bookmark } from '@/lib/db/bookmarks'
 import { DashboardContext } from './DashboardContent'
 import DeleteConfirmationModal from './DeleteConfirmationModal'
+import { useLinkPreview } from './hooks/useLinkPreview'
+import PreviewCard from './PreviewCard'
 
 interface BookmarkListProps {
   initialBookmarks: Bookmark[]
@@ -46,6 +48,11 @@ export default function BookmarkList({
   const dashboardContext = useContext(DashboardContext)
   const channelRef = useRef<any>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Link preview on hover
+  const { preview, isLoading: previewLoading, error: previewError, visible: previewVisible, handleMouseEnter: onPreviewEnter, handleMouseLeave: onPreviewLeave } = useLinkPreview()
+  const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
+  const [previewShowAbove, setPreviewShowAbove] = useState(false)
 
   //filter bookmarks based on search query
   const filteredBookmarks = useMemo(() => {
@@ -634,16 +641,28 @@ export default function BookmarkList({
           const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
 
           return (
-          <div
-            key={bookmark.id}
-            className={`bg-white dark:bg-zinc-900 border rounded-xl shadow-sm p-5 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:shadow-md hover:scale-[1.01] cursor-pointer transition-all duration-200 ${
-              bookmark.is_pinned
+            <div
+              key={bookmark.id}
+              className={`relative bg-white dark:bg-zinc-900 border rounded-xl shadow-sm p-5 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:shadow-md hover:scale-[1.01] cursor-pointer transition-all duration-200 ${bookmark.is_pinned
                 ? 'border-green-300 dark:border-green-700/70'
                 : 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'
-            } ${
-              deletingIds.has(bookmark.id) ? 'opacity-50' : ''
-            }`}
-          >
+                } ${deletingIds.has(bookmark.id) ? 'opacity-50' : ''
+                } ${hoveredBookmarkId === bookmark.id ? 'z-50' : ''
+                }`}
+              onMouseEnter={(e) => {
+                if (editingId !== bookmark.id) {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const spaceBelow = window.innerHeight - rect.bottom
+                  setPreviewShowAbove(spaceBelow < 280)
+                  setHoveredBookmarkId(bookmark.id)
+                  onPreviewEnter(bookmark.url)
+                }
+              }}
+              onMouseLeave={() => {
+                setHoveredBookmarkId(null)
+                onPreviewLeave()
+              }}
+            >
               {editingId === bookmark.id ? (
                 //edit mode
                 <div className="space-y-3">
@@ -762,14 +781,14 @@ export default function BookmarkList({
                       <h3 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white group-hover:text-green-400 transition-all duration-200 truncate">
                         {bookmark.title}
                       </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                            {domain || 'Unknown domain'}
-                          </p>
-                          <span className="text-gray-500 dark:text-gray-400">&middot;</span>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatDate(bookmark.created_at)}
-                          </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                          {domain || 'Unknown domain'}
+                        </p>
+                        <span className="text-gray-500 dark:text-gray-400">&middot;</span>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {formatDate(bookmark.created_at)}
+                        </p>
                       </div>
                     </a>
                   </div>
@@ -778,11 +797,10 @@ export default function BookmarkList({
                     <button
                       onClick={() => handleTogglePin(bookmark)}
                       disabled={pinningIds.has(bookmark.id)}
-                      className={`p-2 hover:scale-110 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                        bookmark.is_pinned
-                          ? 'text-green-600 dark:text-green-500 hover:text-green-500'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-green-500'
-                      }`}
+                      className={`p-2 hover:scale-110 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${bookmark.is_pinned
+                        ? 'text-green-600 dark:text-green-500 hover:text-green-500'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-green-500'
+                        }`}
                       title={bookmark.is_pinned ? 'Unpin bookmark' : 'Pin bookmark'}
                     >
                       {bookmark.is_pinned ? (
@@ -934,7 +952,18 @@ export default function BookmarkList({
                   </div>
                 </div>
               )}
-          </div>
+
+              {/* Quick Peek Preview */}
+              {hoveredBookmarkId === bookmark.id && (
+                <PreviewCard
+                  preview={preview}
+                  isLoading={previewLoading}
+                  error={previewError}
+                  visible={previewVisible}
+                  showAbove={previewShowAbove}
+                />
+              )}
+            </div>
           )
         })}
       </div>
