@@ -2,8 +2,6 @@
 
 A modern, real-time bookmark manager built with Next.js and Supabase — designed like a lightweight SaaS product with collections, sharing, bulk actions, and intelligent link features.
 
-> Built in ~12 hours with a focus on real-world UX, scalability, and system design
-
 ## Live Demo
 
 - **Live App:** https://smart-bookmark-app-anson.vercel.app/
