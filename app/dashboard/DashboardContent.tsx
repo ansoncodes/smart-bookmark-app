@@ -46,6 +46,14 @@ export default function DashboardContent({
   const [supabase] = useState(() => createClient())
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
+  useEffect(() => {
+    const handleOpenMobileSidebar = () => setIsMobileSidebarOpen(true)
+    window.addEventListener('open-mobile-sidebar', handleOpenMobileSidebar)
+    return () => {
+      window.removeEventListener('open-mobile-sidebar', handleOpenMobileSidebar)
+    }
+  }, [])
+
   const contextValue: DashboardContextType = {
     optimisticAddCallbackRef,
   }
@@ -220,21 +228,8 @@ export default function DashboardContent({
 
   return (
     <DashboardContext.Provider value={contextValue}>
-      <div className="flex flex-col md:flex-row min-h-screen bg-gray-50 dark:bg-black md:gap-8">
+      <div className="flex flex-col md:flex-row md:gap-8">
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 sticky top-0 z-30">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Smart Bookmarks</h1>
-          <button
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg"
-            aria-label="Open sidebar"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
-
         {/* Sidebar */}
         <Sidebar
           collections={collections}
@@ -248,7 +243,7 @@ export default function DashboardContent({
         />
 
         {/* Main Content */}
-        <div className="flex-1 min-w-0 p-4 md:p-0 md:pt-24 space-y-6">
+        <div className="flex-1 min-w-0 p-4 md:p-0 space-y-6">
           {/* Add Bookmark Form */}
           <div className="relative z-10">
             <AddBookmarkForm

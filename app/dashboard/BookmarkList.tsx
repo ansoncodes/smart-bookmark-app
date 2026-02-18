@@ -39,6 +39,14 @@ function sortBookmarks(items: Bookmark[]): Bookmark[] {
   })
 }
 
+const brandLogoMap: Record<string, string> = {
+  'github.com': 'https://cdn.simpleicons.org/github/9CA3AF',
+  'youtube.com': 'https://cdn.simpleicons.org/youtube/FF0000',
+  'leetcode.com': 'https://cdn.simpleicons.org/leetcode/FFA116',
+  'mail.google.com': 'https://cdn.simpleicons.org/gmail/EA4335',
+  'gmail.com': 'https://cdn.simpleicons.org/gmail/EA4335',
+}
+
 export default function BookmarkList({
   initialBookmarks,
   userId,
@@ -510,7 +518,7 @@ export default function BookmarkList({
 
     //validate URL format
     if (!isValidUrl(normalizedUrl)) {
-      setEditError('Please enter a valid URL (e.g., example.com)')
+      setEditError('Please enter a valid URL (e.g., example.com or http://localhost:3000)')
       return
     }
 
@@ -783,6 +791,7 @@ export default function BookmarkList({
         {sortedBookmarks.map((bookmark) => {
           const domain = getDomain(bookmark.url)
           const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
+          const logoUrl = brandLogoMap[domain] || faviconUrl
 
           return (
             <div
@@ -937,16 +946,14 @@ export default function BookmarkList({
                     </div>
 
                     {/* Icon column - fixed width with fallback */}
-                    <div className="w-8 h-8 rounded-md border border-gray-700 bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                      <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400">
-                        {(domain.charAt(0) || '?').toUpperCase()}
-                      </div>
+                    <div className="w-8 h-8 bg-transparent flex items-center justify-center flex-shrink-0 relative">
                       <img
-                        src={faviconUrl}
+                        src={logoUrl}
                         alt={domain || 'Website icon'}
-                        className="absolute inset-0 w-8 h-8 rounded-md bg-gray-800 object-contain transition-transform duration-200 group-hover:scale-105"
+                        className="absolute inset-0 w-8 h-8 bg-transparent object-contain transition-transform duration-200 group-hover:scale-105"
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none'
+                          if (e.currentTarget.src.endsWith('/globe.svg')) return
+                          e.currentTarget.src = '/globe.svg'
                         }}
                       />
                     </div>

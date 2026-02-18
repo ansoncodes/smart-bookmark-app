@@ -132,9 +132,9 @@ export default function Sidebar({
         }
     }
 
-    const SidebarContent = () => (
-        <div className="h-full flex flex-col">
-            <nav className="space-y-1 flex-1 overflow-y-auto">
+    const renderSidebarContent = () => (
+        <div className="h-full overflow-y-auto">
+            <nav className="space-y-1">
                 <div className="md:hidden mb-6 px-2">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Smart Bookmarks</h2>
                 </div>
@@ -215,7 +215,7 @@ export default function Sidebar({
                                     </button>
 
                                     {/* Action Buttons (Edit/Delete) */}
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
                                         {/* Edit Button */}
                                         <button
                                             onClick={(e) => {
@@ -273,7 +273,7 @@ export default function Sidebar({
                 </nav>
 
                 {/* New Collection */}
-                <div className="mt-4 px-1 pb-4 md:pb-0">
+                <div className="mt-4 pb-4">
                     {isCreating ? (
                         <div className="space-y-2">
                             <input
@@ -329,7 +329,7 @@ export default function Sidebar({
         <>
             <aside className="hidden md:block w-56 flex-shrink-0">
                 <div className="sticky top-24">
-                    <SidebarContent />
+                    {renderSidebarContent()}
                 </div>
             </aside>
 
@@ -342,7 +342,7 @@ export default function Sidebar({
                 <aside
                     className={`absolute inset-y-0 left-0 w-[85vw] max-w-xs bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 shadow-2xl transform transition-transform duration-300 ease-out p-6 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 >
-                    <SidebarContent />
+                    {renderSidebarContent()}
                 </aside>
             </div>
         </>

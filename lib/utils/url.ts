@@ -5,7 +5,7 @@
 export function normalizeUrl(input: string): string {
     if (!input) return ''
 
-    let trimmed = input.trim()
+    const trimmed = input.trim()
 
     // If it already has a protocol, return as is
     if (/^https?:\/\//i.test(trimmed)) {
@@ -38,10 +38,15 @@ export function isValidUrl(input: string): boolean {
             return false
         }
 
-        // Hostname check: must contain at least one dot (e.g., "google.com")
-        // and shouldn't be just a dot
+        // Hostname check:
+        // Allow normal domains (must include a dot), localhost, and local IP/IPv6 hosts.
         const host = url.hostname
-        if (!host.includes('.') || host.startsWith('.') || host.endsWith('.')) {
+        const isLocalhost = host === 'localhost'
+        const isIPv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(host)
+        const isIPv6 = host.includes(':')
+        const isDomain = host.includes('.') && !host.startsWith('.') && !host.endsWith('.')
+
+        if (!isDomain && !isLocalhost && !isIPv4 && !isIPv6) {
             return false
         }
 

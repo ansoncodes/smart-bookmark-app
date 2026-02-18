@@ -74,3 +74,15 @@ select option {
   background: #18181b;
   color: rgba(255, 255, 255, 0.9);
 }
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

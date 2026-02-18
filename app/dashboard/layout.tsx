@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SignOutButton from './SignOutButton'
 import ThemeToggle from './ThemeToggle'
+import MobileSidebarTrigger from './MobileSidebarTrigger'
 
 export default async function DashboardLayout({
   children,
@@ -24,8 +25,10 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-gray-100 text-gray-900 dark:bg-black dark:text-white">
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <MobileSidebarTrigger />
+
+            <div className="hidden md:flex w-8 h-8 bg-green-500 rounded-lg items-center justify-center">
               <svg
                 className="w-5 h-5 text-black"
                 fill="none"
@@ -40,7 +43,7 @@ export default async function DashboardLayout({
                 />
               </svg>
             </div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
               Smart Bookmark
             </h1>
           </div>
@@ -72,5 +75,4 @@ export default async function DashboardLayout({
     </div>
   )
 }
-
 

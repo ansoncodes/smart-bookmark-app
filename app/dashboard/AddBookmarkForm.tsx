@@ -90,7 +90,7 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
     const normalizedUrl = normalizeUrl(url)
 
     if (!isValidUrl(normalizedUrl)) {
-      setError('Please enter a valid URL (e.g., example.com or https://example.com)')
+      setError('Please enter a valid URL (e.g., example.com or http://localhost:3000)')
       setLoading(false)
       return
     }
