@@ -12,7 +12,7 @@ export default function ThemeToggle() {
   }, [])
 
   if (!mounted) {
-    return <div className="h-8 w-16 rounded-full bg-gray-200 dark:bg-zinc-800/50 animate-pulse" />
+    return <div className="h-8 w-16 shrink-0 rounded-full bg-gray-200 dark:bg-zinc-800/50 animate-pulse" />
   }
 
   const isDark = theme === 'dark'
@@ -23,7 +23,7 @@ export default function ThemeToggle() {
       role="switch"
       aria-checked={isDark}
       onClick={toggleTheme}
-      className={`relative inline-flex h-8 w-16 items-center rounded-full border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 ${isDark
+      className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 ${isDark
           ? 'bg-zinc-900 border-zinc-800'
           : 'bg-green-500 border-green-500'
         }`}
@@ -43,7 +43,7 @@ export default function ThemeToggle() {
       </span>
 
       <span
-        className={`inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-white text-gray-700 shadow-sm transition-all duration-200 ${isDark ? 'translate-x-8' : 'translate-x-1'
+        className={`absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm transition-transform duration-200 ${isDark ? 'translate-x-8' : 'translate-x-0'
           }`}
       >
         {isDark ? (

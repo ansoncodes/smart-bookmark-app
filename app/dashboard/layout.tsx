@@ -24,7 +24,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 dark:bg-black dark:text-white">
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <MobileSidebarTrigger />
 
@@ -43,18 +43,18 @@ export default async function DashboardLayout({
                 />
               </svg>
             </div>
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap text-gray-900 dark:text-white">
               Smart Bookmark
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               {user.user_metadata?.avatar_url && (
                 <img
                   src={user.user_metadata.avatar_url}
                   alt="Profile"
-                  className="w-8 h-8 rounded-full border border-gray-300 dark:border-zinc-800"
+                  className="w-8 h-8 rounded-full border border-gray-300 dark:border-zinc-800 shrink-0"
                 />
               )}
               <div className="hidden sm:block">
@@ -75,4 +75,3 @@ export default async function DashboardLayout({
     </div>
   )
 }
-
