@@ -7,6 +7,8 @@ import type { BookmarkCollection } from '@/lib/db/bookmarkCollections'
 import AddBookmarkForm from '@/app/dashboard/AddBookmarkForm'
 import BookmarkList from '@/app/dashboard/BookmarkList'
 import Sidebar from '@/app/dashboard/Sidebar'
+import { createClient } from '@/lib/supabase/client'
+import { useEffect } from 'react'
 
 interface DashboardContextType {
   optimisticAddCallbackRef: React.MutableRefObject<((bookmark: Bookmark) => void) | null>
@@ -33,6 +35,15 @@ export default function DashboardContent({
   const [collections, setCollections] = useState<Collection[]>(initialCollections)
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [bookmarkCollections, setBookmarkCollections] = useState<BookmarkCollection[]>(initialBookmarkCollections)
+
+  // Use a ref for selectedCollectionId to avoid re-subscribing when it changes
+  const selectedCollectionIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    selectedCollectionIdRef.current = selectedCollectionId
+  }, [selectedCollectionId])
+
+  // Memoize the supabase client instance
+  const [supabase] = useState(() => createClient())
 
   const contextValue: DashboardContextType = {
     optimisticAddCallbackRef,
@@ -106,6 +117,105 @@ export default function DashboardContent({
       )
     )
   }, [])
+
+  //subscribe to real-time updates for collections and assignments
+  useEffect(() => {
+    console.log('[DashboardContent] Setting up real-time subscriptions for userId:', userId)
+
+    // 1. Collections Channel
+    const collectionsChannel = supabase
+      .channel(`dashboard-collections-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'collections', filter: `user_id=eq.${userId}` },
+        (payload: any) => {
+          console.log('[DashboardContent] Collection INSERT:', payload.new.name)
+          setCollections((prev) => {
+            if (prev.some(c => c.id === payload.new.id)) return prev
+            return [...prev, payload.new as Collection]
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'collections', filter: `user_id=eq.${userId}` },
+        (payload: any) => {
+          console.log('[DashboardContent] Collection UPDATE:', payload.new.name)
+          setCollections((prev) =>
+            prev.map(c => c.id === payload.new.id ? (payload.new as Collection) : c)
+          )
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'collections' },
+        (payload: any) => {
+          console.log('[DashboardContent] Collection DELETE:', payload.old.id)
+          const deletedId = payload.old.id
+          setCollections((prev) => prev.filter(c => c.id !== deletedId))
+          setBookmarkCollections((prev) => prev.filter(bc => bc.collection_id !== deletedId))
+          if (selectedCollectionIdRef.current === deletedId) {
+            setSelectedCollectionId(null)
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[DashboardContent] Collections channel status:', status)
+      })
+
+    // 2. Bookmark-Collection Junction Channel
+    const relationsChannel = supabase
+      .channel(`dashboard-relations-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bookmark_collections' },
+        (payload: any) => {
+          console.log('[DashboardContent] Relation INSERT:', payload.new)
+          setBookmarkCollections((prev) => {
+            // First, find if we already have this mapping (either real or temp)
+            const existingIndex = prev.findIndex(
+              bc => (bc.id === payload.new.id) ||
+                (bc.bookmark_id === payload.new.bookmark_id && bc.collection_id === payload.new.collection_id)
+            )
+
+            if (existingIndex > -1) {
+              // Replace the existing entry with the real one from Supabase
+              const next = [...prev]
+              next[existingIndex] = payload.new as BookmarkCollection
+              return next
+            }
+
+            return [...prev, payload.new as BookmarkCollection]
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'bookmark_collections' },
+        (payload: any) => {
+          console.log('[DashboardContent] Relation DELETE full payload:', payload)
+          // Since we might only have the 'id' in payload.old, we filter by that.
+          // If the project doesn't have 'FULL' replica identity, filtering by other columns won't work.
+          setBookmarkCollections((prev) => {
+            const deletedId = payload.old.id
+            if (!deletedId) {
+              console.warn('[DashboardContent] DELETE event received but payload.old.id is missing. Is REPLICA IDENTITY FULL set?')
+              return prev
+            }
+            return prev.filter(bc => bc.id !== deletedId)
+          })
+        }
+      )
+      .subscribe((status) => {
+        console.log('[DashboardContent] Relations channel status:', status)
+      })
+
+    return () => {
+      console.log('[DashboardContent] Cleaning up real-time subscriptions')
+      supabase.removeChannel(collectionsChannel)
+      supabase.removeChannel(relationsChannel)
+    }
+  }, [userId, supabase])
 
   return (
     <DashboardContext.Provider value={contextValue}>
