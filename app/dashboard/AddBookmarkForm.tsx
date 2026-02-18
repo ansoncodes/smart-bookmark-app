@@ -5,6 +5,7 @@ import { useState, useRef, useContext, useEffect, useCallback } from 'react'
 import type { Bookmark } from '@/lib/db/bookmarks'
 import type { Collection } from '@/lib/db/collections'
 import { DashboardContext } from './DashboardContent'
+import { normalizeUrl, isValidUrl } from '@/lib/utils/url'
 
 interface AddBookmarkFormProps {
   onBookmarkAdded?: (bookmark: Bookmark) => void
@@ -86,22 +87,27 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
       return
     }
 
-    if (!url || url.trim() === '') {
-      setError('Please enter a URL')
+    const normalizedUrl = normalizeUrl(url)
+
+    if (!isValidUrl(normalizedUrl)) {
+      setError('Please enter a valid URL (e.g., example.com or https://example.com)')
       setLoading(false)
       return
     }
 
     try {
-      new URL(url)
-    } catch {
-      setError('Please enter a valid URL (e.g., https://example.com)')
-      setLoading(false)
-      return
-    }
+      // Re-create FormData with normalized URL
+      const finalFormData = new FormData()
+      finalFormData.append('title', title)
+      finalFormData.append('url', normalizedUrl)
+      if (formData.get('description')) {
+        finalFormData.append('description', formData.get('description') as string)
+      }
+      if (formData.get('collection_id')) {
+        finalFormData.append('collection_id', formData.get('collection_id') as string)
+      }
 
-    try {
-      const bookmark = await addBookmarkAction(formData)
+      const bookmark = await addBookmarkAction(finalFormData)
 
       if (bookmark) {
         if (dashboardContext?.optimisticAddCallbackRef.current) {
@@ -242,7 +248,7 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
                 URL
               </label>
               <input
-                type="url"
+                type="text"
                 id="url"
                 name="url"
                 placeholder="https://example.com"

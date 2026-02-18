@@ -14,6 +14,7 @@ import DeleteConfirmationModal from './DeleteConfirmationModal'
 import { useLinkPreview } from './hooks/useLinkPreview'
 import PreviewCard from './PreviewCard'
 import { openLinksInNewTabs } from '@/lib/utils'
+import { normalizeUrl, isValidUrl } from '@/lib/utils/url'
 import PopupVerificationModal from './PopupVerificationModal'
 
 interface BookmarkListProps {
@@ -505,16 +506,11 @@ export default function BookmarkList({
       return
     }
 
-    if (!editUrl.trim()) {
-      setEditError('URL is required')
-      return
-    }
+    const normalizedUrl = normalizeUrl(editUrl)
 
     //validate URL format
-    try {
-      new URL(editUrl)
-    } catch {
-      setEditError('Please enter a valid URL')
+    if (!isValidUrl(normalizedUrl)) {
+      setEditError('Please enter a valid URL (e.g., example.com)')
       return
     }
 
@@ -522,7 +518,7 @@ export default function BookmarkList({
 
     const formData = new FormData()
     formData.append('title', editTitle)
-    formData.append('url', editUrl)
+    formData.append('url', normalizedUrl)
     formData.append('description', editDescription)
 
     try {
@@ -857,7 +853,7 @@ export default function BookmarkList({
                       URL
                     </label>
                     <input
-                      type="url"
+                      type="text"
                       value={editUrl}
                       onChange={(e) => setEditUrl(e.target.value)}
                       disabled={isUpdating}

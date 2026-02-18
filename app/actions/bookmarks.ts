@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { addBookmark, updateBookmark, deleteBookmark, updateBookmarkLinkStatus } from '@/lib/db/bookmarks'
 import { addBookmarksToCollection, removeBookmarksFromCollection } from '@/lib/db/bookmarkCollections'
 import { validateUrl } from '@/lib/linkChecker'
+import { normalizeUrl, isValidUrl } from '@/lib/utils/url'
 
 //add Bookmark
 export async function addBookmarkAction(formData: FormData) {
@@ -38,14 +39,13 @@ export async function addBookmarkAction(formData: FormData) {
     throw new Error('Title must be less than 255 characters')
   }
 
-  //validate url
-  if (!url || url.toString().trim() === '') {
+  // Normalize and validate URL
+  if (!url) {
     throw new Error('URL is required')
   }
 
-  try {
-    new URL(url.toString())
-  } catch {
+  const normalizedUrl = normalizeUrl(url.toString())
+  if (!isValidUrl(normalizedUrl)) {
     throw new Error('Invalid URL format')
   }
 
@@ -55,14 +55,14 @@ export async function addBookmarkAction(formData: FormData) {
   const result = await addBookmark(
     user.id,
     title.toString(),
-    url.toString(),
+    normalizedUrl,
     collectionId ? collectionId.toString() : null,
     description ? description.toString() : null
   )
   console.log('[addBookmarkAction] ✅ Bookmark inserted, result:', result)
 
   // Trigger link check asynchronously (don't await to avoid blocking UI)
-  if (result?.id) {
+  if (result?.id && url) {
     validateUrl(url.toString()).then(async (isValid) => {
       await updateBookmarkLinkStatus(result.id, !isValid)
       revalidatePath('/dashboard')
@@ -116,14 +116,13 @@ export async function updateBookmarkAction(
     throw new Error('Title must be less than 255 characters')
   }
 
-  //validate url
-  if (!url || url.toString().trim() === '') {
+  // Normalize and validate URL
+  if (!url) {
     throw new Error('URL is required')
   }
 
-  try {
-    new URL(url.toString())
-  } catch {
+  const normalizedUrl = normalizeUrl(url.toString())
+  if (!isValidUrl(normalizedUrl)) {
     throw new Error('Invalid URL format')
   }
 
@@ -132,7 +131,7 @@ export async function updateBookmarkAction(
     id,
     user.id,
     title.toString(),
-    url.toString(),
+    normalizedUrl,
     undefined,
     description !== null ? (description ? description.toString() : null) : undefined
   )
