@@ -67,8 +67,8 @@ export async function addBookmarkAction(formData: FormData) {
   console.log('[addBookmarkAction] ✅ Bookmark inserted, result:', result)
 
   // Trigger link check asynchronously (don't await to avoid blocking UI)
-  if (result?.id && url) {
-    validateUrl(url.toString()).then(async (isValid) => {
+  if (result?.id && normalizedUrl) {
+    validateUrl(normalizedUrl).then(async (isValid) => {
       await updateBookmarkLinkStatus(result.id, !isValid)
       revalidatePath('/dashboard')
     }).catch(err => console.error('[addBookmarkAction] Link check failed:', err))
