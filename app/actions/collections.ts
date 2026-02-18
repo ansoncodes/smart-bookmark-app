@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { createCollection, deleteCollection, updateCollection } from '@/lib/db/collections'
+import { createCollection, deleteCollection, getCollections, updateCollection } from '@/lib/db/collections'
 
 //create collection
 export async function createCollectionAction(formData: FormData) {
@@ -77,4 +77,17 @@ export async function updateCollectionAction(collectionId: string, name: string)
     revalidatePath('/dashboard')
 
     return updated
+}
+
+// Fallback fetch for collections when realtime misses events.
+export async function getLatestCollectionsAction() {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase.auth.getUser()
+
+    if (error || !data.user) {
+        throw new Error('User not authenticated')
+    }
+
+    return getCollections(data.user.id)
 }

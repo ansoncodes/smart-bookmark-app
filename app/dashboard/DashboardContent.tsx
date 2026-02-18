@@ -10,6 +10,7 @@ import Sidebar from '@/app/dashboard/Sidebar'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect } from 'react'
 import { getLatestBookmarkCollectionsAction } from '@/app/actions/bookmarks'
+import { getLatestCollectionsAction } from '@/app/actions/collections'
 
 interface DashboardContextType {
   optimisticAddCallbackRef: React.MutableRefObject<((bookmark: Bookmark) => void) | null>
@@ -36,6 +37,7 @@ export default function DashboardContent({
   const [collections, setCollections] = useState<Collection[]>(initialCollections)
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [bookmarkCollections, setBookmarkCollections] = useState<BookmarkCollection[]>(initialBookmarkCollections)
+  const isSyncingCollectionsRef = useRef(false)
   const isSyncingRelationsRef = useRef(false)
 
   // Use a ref for selectedCollectionId to avoid re-subscribing when it changes
@@ -293,6 +295,45 @@ export default function DashboardContent({
     const onVisible = () => {
       if (!document.hidden) {
         syncLatestRelations().catch(() => {})
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+
+    return () => {
+      mounted = false
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [])
+
+  // Cross-browser fallback: periodically sync collections.
+  useEffect(() => {
+    let mounted = true
+
+    const syncLatestCollections = async () => {
+      if (isSyncingCollectionsRef.current || document.hidden) {
+        return
+      }
+      isSyncingCollectionsRef.current = true
+      try {
+        const latest = await getLatestCollectionsAction()
+        if (!mounted) return
+        setCollections(latest)
+      } catch (error) {
+        console.error('[DashboardContent] Fallback collections sync failed:', error)
+      } finally {
+        isSyncingCollectionsRef.current = false
+      }
+    }
+
+    const intervalId = window.setInterval(syncLatestCollections, 5000)
+
+    const onVisible = () => {
+      if (!document.hidden) {
+        syncLatestCollections().catch(() => {})
       }
     }
 
