@@ -667,7 +667,7 @@ export default function BookmarkList({
           )}
         </div>
 
-        <div className="flex items-center gap-3 md:justify-end">
+        <div className="flex items-center gap-3 flex-wrap md:flex-nowrap md:justify-end">
           {selectedCollectionId && filteredBookmarks.length > 0 && (
             <button
               onClick={handleOpenAll}
@@ -923,7 +923,7 @@ export default function BookmarkList({
                 </div>
               ) : (
                 //view mode
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* Checkbox column - fixed width */}
                     <div className="w-5 flex justify-center">
@@ -961,7 +961,7 @@ export default function BookmarkList({
                       <h3 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white group-hover:text-green-400 transition-all duration-200 truncate flex items-center gap-2">
                         <span className="truncate">{bookmark.title}</span>
                         {bookmark.is_broken && (
-                          <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20" title="This link is not reachable">
+                          <span className="hidden sm:inline-flex flex-shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20" title="This link is not reachable">
                             Broken link
                           </span>
                         )}
@@ -983,7 +983,7 @@ export default function BookmarkList({
                     </a>
                   </div>
 
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-0 sm:ml-auto flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-end flex-wrap">
                     <button
                       onClick={() => handleTogglePin(bookmark)}
                       disabled={pinningIds.has(bookmark.id)}

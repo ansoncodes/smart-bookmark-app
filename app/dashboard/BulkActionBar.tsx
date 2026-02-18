@@ -65,11 +65,11 @@ export default function BulkActionBar({
 
 
     return (
-        <div className="sticky top-4 z-40 mb-6 animate-in fade-in slide-in-from-top-2 duration-300 fill-mode-both">
-            <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-gray-200/50 dark:border-zinc-800/50 rounded-2xl shadow-xl shadow-black/5 p-2 pr-3 flex items-center justify-between gap-4 mx-auto max-w-2xl ring-1 ring-black/5 dark:ring-white/5">
+        <div className="sticky top-4 z-40 mb-6 animate-in fade-in slide-in-from-top-2 duration-300 fill-mode-both px-2 sm:px-4 md:px-0">
+            <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-gray-200/50 dark:border-zinc-800/50 rounded-2xl shadow-xl shadow-black/5 p-2 sm:pr-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4 mx-auto max-w-2xl ring-1 ring-black/5 dark:ring-white/5 overflow-x-auto no-scrollbar">
 
                 {/* Left: Selection Info */}
-                <div className="flex items-center gap-3 pl-3 border-r border-gray-200 dark:border-zinc-800 pr-4">
+                <div className="flex items-center gap-3 pl-2 sm:pl-3 border-r border-gray-200 dark:border-zinc-800 pr-3 sm:pr-4 flex-shrink-0">
                     <label className="flex items-center gap-2 cursor-pointer group">
                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${allVisibleSelected ? 'bg-black dark:bg-white border-transparent text-white dark:text-black' : 'border-gray-300 dark:border-zinc-600 group-hover:border-gray-400 dark:group-hover:border-zinc-500'}`}>
                             <input
@@ -91,11 +91,11 @@ export default function BulkActionBar({
                 </div>
 
                 {/* Center: Actions */}
-                <div className="flex items-center gap-2 flex-1">
+                <div className="flex items-center gap-2 flex-1 min-w-full sm:min-w-0 flex-wrap sm:flex-nowrap">
                     {/* Primary Action: Open */}
                     <button
                         onClick={onOpenSelected}
-                        className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-600"
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-600 whitespace-nowrap"
                     >
                         Open
                     </button>
@@ -107,9 +107,9 @@ export default function BulkActionBar({
                                 <button
                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                     disabled={isAdding}
-                                    className="flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-200 dark:border-zinc-700 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-zinc-700 disabled:opacity-50 min-w-[160px] justify-between"
+                                    className="flex items-center gap-2 pl-3 pr-2 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-200 dark:border-zinc-700 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-zinc-700 disabled:opacity-50 min-w-[140px] sm:min-w-[160px] justify-between"
                                 >
-                                    <span className="truncate max-w-[140px]">
+                                    <span className="truncate max-w-[110px] sm:max-w-[140px]">
                                         {targetCollectionId
                                             ? collections.find(c => c.id === targetCollectionId)?.name
                                             : 'Select collection...'}
@@ -121,7 +121,7 @@ export default function BulkActionBar({
 
                                 {/* Dropdown Menu */}
                                 {isDropdownOpen && (
-                                    <div className="absolute top-full left-0 mt-1 w-full min-w-[200px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg shadow-xl shadow-black/10 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+                                    <div className="absolute top-full left-0 mt-1 w-full min-w-[180px] sm:min-w-[200px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg shadow-xl shadow-black/10 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-left">
                                         <div className="max-h-60 overflow-y-auto py-1">
                                             {relevantCollections.map((c) => (
                                                 <button
@@ -172,7 +172,7 @@ export default function BulkActionBar({
                     {showRemoveAction && (
                         <button
                             onClick={onRemoveFromCollection}
-                            className="px-3 py-1.5 text-sm font-medium text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                            className="px-3 py-1.5 text-sm font-medium text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors whitespace-nowrap"
                         >
                             Remove
                         </button>
@@ -180,7 +180,7 @@ export default function BulkActionBar({
                 </div>
 
                 {/* Right: Danger Action */}
-                <div className="pl-4 border-l border-gray-200 dark:border-zinc-800">
+                <div className="pl-3 sm:pl-4 border-l border-gray-200 dark:border-zinc-800">
                     <button
                         onClick={onDelete}
                         disabled={isBulkDeleting}
@@ -193,7 +193,7 @@ export default function BulkActionBar({
                 {/* Close button */}
                 <button
                     onClick={onClearSelection}
-                    className="ml-1 p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                    className="ml-1 p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex-shrink-0"
                     title="Clear selection"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -225,37 +225,39 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
           </div>
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
-            {/* Title */}
-            <div>
-              <label htmlFor="add-bookmark-title" className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
-                Title
-              </label>
-              <input
-                ref={titleInputRef}
-                type="text"
-                id="add-bookmark-title"
-                name="title"
-                placeholder="e.g. My Favorite Article"
-                disabled={loading}
-                tabIndex={isExpanded ? 0 : -1}
-                className={inputClass}
-              />
-            </div>
+            <div className="flex flex-col lg:flex-row gap-3">
+              {/* Title */}
+              <div className="flex-1">
+                <label htmlFor="add-bookmark-title" className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
+                  Title
+                </label>
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  id="add-bookmark-title"
+                  name="title"
+                  placeholder="e.g. My Favorite Article"
+                  disabled={loading}
+                  tabIndex={isExpanded ? 0 : -1}
+                  className={inputClass}
+                />
+              </div>
 
-            {/* URL */}
-            <div>
-              <label htmlFor="url" className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
-                URL
-              </label>
-              <input
-                type="text"
-                id="url"
-                name="url"
-                placeholder="https://example.com"
-                disabled={loading}
-                tabIndex={isExpanded ? 0 : -1}
-                className={inputClass}
-              />
+              {/* URL */}
+              <div className="flex-1">
+                <label htmlFor="url" className="block text-xs text-gray-500 dark:text-white/50 mb-1.5">
+                  URL
+                </label>
+                <input
+                  type="text"
+                  id="url"
+                  name="url"
+                  placeholder="https://example.com"
+                  disabled={loading}
+                  tabIndex={isExpanded ? 0 : -1}
+                  className={inputClass}
+                />
+              </div>
             </div>
 
             {/* Description */}
@@ -343,7 +345,7 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-1">
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <button
                 type="submit"
                 disabled={loading}
@@ -367,7 +369,7 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
                 onClick={handleCancel}
                 disabled={loading}
                 tabIndex={isExpanded ? 0 : -1}
-                className="px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 bg-transparent border border-gray-200 hover:bg-gray-100 hover:text-gray-800 dark:text-white/60 dark:border-white/[0.1] dark:hover:bg-white/[0.05] dark:hover:text-white/80"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 bg-transparent border border-gray-200 hover:bg-gray-100 hover:text-gray-800 dark:text-white/60 dark:border-white/[0.1] dark:hover:bg-white/[0.05] dark:hover:text-white/80"
               >
                 Cancel
               </button>

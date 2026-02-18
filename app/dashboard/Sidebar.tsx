@@ -9,6 +9,8 @@ interface SidebarProps {
     onCollectionCreated: (collection: Collection) => void
     onCollectionDeleted: (collectionId: string) => void
     onCollectionUpdated: (collection: Collection) => void
+    isOpen?: boolean
+    onClose?: () => void
 }
 
 export default function Sidebar({
@@ -18,6 +20,8 @@ export default function Sidebar({
     onCollectionCreated,
     onCollectionDeleted,
     onCollectionUpdated,
+    isOpen = false,
+    onClose,
 }: SidebarProps) {
     const [isCreating, setIsCreating] = useState(false)
     const [newName, setNewName] = useState('')
@@ -128,13 +132,19 @@ export default function Sidebar({
         }
     }
 
-    return (
-        <aside className="w-56 flex-shrink-0">
-            <div className="sticky top-24">
-                <nav className="space-y-1">
+    const SidebarContent = () => (
+        <div className="h-full flex flex-col">
+            <nav className="space-y-1 flex-1 overflow-y-auto">
+                <div className="md:hidden mb-6 px-2">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Smart Bookmarks</h2>
+                </div>
+
                     {/* All Bookmarks */}
                     <button
-                        onClick={() => onSelectCollection(null)}
+                        onClick={() => {
+                            onSelectCollection(null)
+                            onClose?.()
+                        }}
                         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${selectedCollectionId === null
                             ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white'
@@ -166,6 +176,7 @@ export default function Sidebar({
                                         type="text"
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
+                                        onBlur={() => handleUpdate(collection.id)}
                                         onKeyDown={(e) => handleEditKeyDown(e, collection.id)}
                                         className="w-full px-2 py-1 text-sm border border-green-500 rounded bg-white dark:bg-zinc-800 focus:outline-none"
                                     />
@@ -188,7 +199,10 @@ export default function Sidebar({
                                 // Display Mode
                                 <>
                                     <button
-                                        onClick={() => onSelectCollection(collection.id)}
+                                        onClick={() => {
+                                            onSelectCollection(collection.id)
+                                            onClose?.()
+                                        }}
                                         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 pr-12 ${selectedCollectionId === collection.id
                                             ? 'bg-green-500/10 text-green-600 dark:text-green-400 font-medium'
                                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800/60 hover:text-gray-900 dark:hover:text-white'
@@ -259,7 +273,7 @@ export default function Sidebar({
                 </nav>
 
                 {/* New Collection */}
-                <div className="mt-4 px-1">
+                <div className="mt-4 px-1 pb-4 md:pb-0">
                     {isCreating ? (
                         <div className="space-y-2">
                             <input
@@ -308,7 +322,29 @@ export default function Sidebar({
                         </button>
                     )}
                 </div>
+        </div>
+    )
+
+    return (
+        <>
+            <aside className="hidden md:block w-56 flex-shrink-0">
+                <div className="sticky top-24">
+                    <SidebarContent />
+                </div>
+            </aside>
+
+            <div className={`md:hidden fixed inset-0 z-50 transition-visibility duration-300 ${isOpen ? 'visible' : 'invisible pointer-events-none'}`}>
+                <div
+                    className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+                    onClick={onClose}
+                />
+
+                <aside
+                    className={`absolute inset-y-0 left-0 w-[85vw] max-w-xs bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 shadow-2xl transform transition-transform duration-300 ease-out p-6 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                >
+                    <SidebarContent />
+                </aside>
             </div>
-        </aside>
+        </>
     )
 }
