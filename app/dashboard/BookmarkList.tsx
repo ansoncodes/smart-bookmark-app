@@ -589,21 +589,26 @@ export default function BookmarkList({
   //empty state
   if (bookmarks.length === 0) {
     return (
-      <div className="bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm p-12 md:p-14 min-h-[320px] flex flex-col items-center justify-center text-center">
-        <div className="w-20 h-20 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl flex items-center justify-center shadow-sm mb-6">
+      <div className="relative overflow-hidden border border-gray-200/70 dark:border-zinc-800/80 rounded-2xl bg-gradient-to-b from-white/70 to-gray-50/60 dark:from-zinc-900 dark:to-zinc-900/70 shadow-sm p-10 md:p-14 min-h-[360px] flex flex-col items-center justify-center text-center">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-green-500/10 blur-3xl" />
+        </div>
+
+        <div className="relative w-20 h-20 bg-white/90 dark:bg-zinc-950/90 border border-gray-200 dark:border-zinc-800 rounded-2xl flex items-center justify-center shadow-sm mb-6">
           <svg className="w-10 h-10 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
         </div>
-        <h3 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-3">
+
+        <h3 className="relative text-2xl font-semibold tracking-tight text-gray-900 dark:text-white mb-3">
           No bookmarks yet
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mb-8">
+        <p className="relative text-sm text-gray-600 dark:text-gray-400 max-w-md mb-8 leading-relaxed">
           Start building your personal link library. Save articles, tools, and resources in one place.
         </p>
         <button
           onClick={handleAddFirstBookmarkClick}
-          className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-black font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-950"
+          className="relative inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950"
         >
           + Add your first bookmark
         </button>
