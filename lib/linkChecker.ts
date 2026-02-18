@@ -1,6 +1,8 @@
 /**
  * Validates if a URL is reachable.
- * Returns true if the URL returns a status code < 400.
+ * Returns false only for clearly broken links (e.g. 404/410).
+ * Many real sites block bots/HEAD requests, so we treat ambiguous/network
+ * failures as valid to avoid false broken-link flags.
  */
 export async function validateUrl(url: string): Promise<boolean> {
     try {
@@ -15,29 +17,35 @@ export async function validateUrl(url: string): Promise<boolean> {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         }
 
-        const response = await fetch(url, {
+        let response = await fetch(url, {
             method: 'HEAD',
             headers,
             signal: controller.signal,
             cache: 'no-cache',
-        }).catch(async (err) => {
-            // Fallback to GET if HEAD is not supported by the server
-            if (err.name === 'AbortError') throw err
-            return await fetch(url, {
+        })
+
+        // Some sites reject HEAD; retry with GET.
+        if (response.status === 405 || response.status === 501) {
+            response = await fetch(url, {
                 method: 'GET',
                 headers,
                 signal: controller.signal,
                 cache: 'no-cache',
             })
-        })
+        }
 
         clearTimeout(timeoutId)
 
-        // 403 (Forbidden) and 429 (Too Many Requests) often indicate bot protection
-        // for sites that are otherwise functional. We treat them as valid to avoid false positives.
-        return response.status < 400 || response.status === 403 || response.status === 429
+        // Mark as broken only for explicit "not found / gone" responses.
+        if (response.status === 404 || response.status === 410) {
+            return false
+        }
+
+        // Everything else is treated as reachable/ambiguous to avoid false positives.
+        return true
     } catch (error) {
         console.error(`[validateUrl] Error checking ${url}:`, error)
-        return false
+        // Network/bot-protection errors are ambiguous, not definitively broken.
+        return true
     }
 }
