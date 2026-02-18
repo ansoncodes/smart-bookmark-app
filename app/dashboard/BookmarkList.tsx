@@ -528,6 +528,7 @@ export default function BookmarkList({
     try {
       await updateBookmarkAction(id, formData)
       console.log('[BookmarkList] Bookmark updated successfully')
+      handleCancelEdit()
     } catch (error) {
       console.error('Failed to update bookmark:', error)
       setEditError('Failed to update bookmark')
@@ -797,6 +798,19 @@ export default function BookmarkList({
                 } ${hoveredBookmarkId === bookmark.id ? 'z-50' : ''
                 }`}
               onMouseEnter={(e) => {
+                setHoveredBookmarkId(bookmark.id)
+
+                // Lazy check: if not checked in last 24h, trigger check
+                const lastChecked = bookmark.last_checked_at ? new Date(bookmark.last_checked_at) : null
+                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+                if (!lastChecked || lastChecked < twentyFourHoursAgo) {
+                  // Re-check after 24h
+                  import('@/app/actions/bookmarks').then(({ checkBookmarkLinkAction }) => {
+                    checkBookmarkLinkAction(bookmark.id, bookmark.url).catch(console.error)
+                  })
+                }
+
                 if (editingId !== bookmark.id) {
                   const rect = e.currentTarget.getBoundingClientRect()
                   const spaceBelow = window.innerHeight - rect.bottom
@@ -888,14 +902,24 @@ export default function BookmarkList({
                     <button
                       onClick={() => handleUpdate(bookmark.id)}
                       disabled={isUpdating}
-                      className="flex-1 bg-green-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-green-600 hover:scale-[1.01] disabled:opacity-50 transition-all duration-200"
+                      className="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
                     >
-                      {isUpdating ? 'Saving...' : 'Save Changes'}
+                      {isUpdating ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          <span>Saving…</span>
+                        </>
+                      ) : (
+                        <span>Save Changes</span>
+                      )}
                     </button>
                     <button
                       onClick={handleCancelEdit}
                       disabled={isUpdating}
-                      className="px-4 py-2 border border-gray-300 dark:border-zinc-800 rounded-lg font-medium text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition-all duration-200"
+                      className="px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 bg-transparent border border-gray-200 hover:bg-gray-100 hover:text-gray-800 dark:text-white/60 dark:border-white/[0.1] dark:hover:bg-white/[0.05] dark:hover:text-white/80"
                     >
                       Cancel
                     </button>
@@ -938,8 +962,13 @@ export default function BookmarkList({
                       rel="noopener noreferrer"
                       className="flex-1 min-w-0"
                     >
-                      <h3 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white group-hover:text-green-400 transition-all duration-200 truncate">
-                        {bookmark.title}
+                      <h3 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white group-hover:text-green-400 transition-all duration-200 truncate flex items-center gap-2">
+                        <span className="truncate">{bookmark.title}</span>
+                        {bookmark.is_broken && (
+                          <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20" title="This link is not reachable">
+                            Broken link
+                          </span>
+                        )}
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">

@@ -9,6 +9,8 @@ export interface Bookmark {
   is_pinned?: boolean
   collection_id?: string | null
   description?: string | null
+  is_broken?: boolean
+  last_checked_at?: string | null
 }
 
 //get bookmarks
@@ -141,5 +143,26 @@ export async function deleteBookmark(
   if (error) {
     console.error('Error deleting bookmark:', error.message)
     throw new Error('Failed to delete bookmark')
+  }
+}
+
+//update bookmark link status
+export async function updateBookmarkLinkStatus(
+  id: string,
+  isBroken: boolean
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('bookmarks')
+    .update({
+      is_broken: isBroken,
+      last_checked_at: new Date().toISOString()
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error updating bookmark link status:', error.message)
+    throw new Error('Failed to update bookmark link status')
   }
 }

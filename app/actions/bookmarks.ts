@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { addBookmark, updateBookmark, deleteBookmark } from '@/lib/db/bookmarks'
+import { addBookmark, updateBookmark, deleteBookmark, updateBookmarkLinkStatus } from '@/lib/db/bookmarks'
 import { addBookmarksToCollection, removeBookmarksFromCollection } from '@/lib/db/bookmarkCollections'
+import { validateUrl } from '@/lib/linkChecker'
 
 //add Bookmark
 export async function addBookmarkAction(formData: FormData) {
@@ -59,6 +60,14 @@ export async function addBookmarkAction(formData: FormData) {
     description ? description.toString() : null
   )
   console.log('[addBookmarkAction] ✅ Bookmark inserted, result:', result)
+
+  // Trigger link check asynchronously (don't await to avoid blocking UI)
+  if (result?.id) {
+    validateUrl(url.toString()).then(async (isValid) => {
+      await updateBookmarkLinkStatus(result.id, !isValid)
+      revalidatePath('/dashboard')
+    }).catch(err => console.error('[addBookmarkAction] Link check failed:', err))
+  }
 
   //add to collection via junction table if selected
   if (collectionId && collectionId.toString().trim() && result?.id) {
@@ -223,6 +232,22 @@ export async function removeFromCollectionAction(
   }
 
   await removeBookmarksFromCollection(bookmarkIds, collectionId)
+
+  revalidatePath('/dashboard')
+}
+
+// Check bookmark link status action
+export async function checkBookmarkLinkAction(id: string, url: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) {
+    throw new Error('User not authenticated')
+  }
+
+  const isValid = await validateUrl(url)
+  await updateBookmarkLinkStatus(id, !isValid)
 
   revalidatePath('/dashboard')
 }
