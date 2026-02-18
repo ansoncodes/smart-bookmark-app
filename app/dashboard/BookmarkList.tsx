@@ -973,7 +973,7 @@ export default function BookmarkList({
                       <h3 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white group-hover:text-green-400 transition-all duration-200 truncate flex items-center gap-2">
                         <span className="truncate">{bookmark.title}</span>
                         {bookmark.is_broken && (
-                          <span className="hidden sm:inline-flex flex-shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20" title="This link is not reachable">
+                          <span className="inline-flex flex-shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20" title="This link is not reachable">
                             Broken link
                           </span>
                         )}

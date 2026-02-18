@@ -78,7 +78,12 @@ export default function DashboardContent({
   }, [bookmarkCollections])
 
   function handleCollectionCreated(collection: Collection) {
-    setCollections((prev) => [...prev, collection])
+    setCollections((prev) => {
+      if (prev.some((c) => c.id === collection.id)) {
+        return prev
+      }
+      return [...prev, collection]
+    })
   }
 
   function handleCollectionDeleted(collectionId: string) {
