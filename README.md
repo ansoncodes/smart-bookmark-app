@@ -4,8 +4,8 @@ Built and deployed a simple bookmark manager.
 
 ## Live Links
 
-- Live Vercel URL: `https://smart-bookmark-app-anson.vercel.app/`
-- Public GitHub Repo: `https://github.com/ansoncodes/smart-bookmark-app`
+- Live Vercel URL: [https://smart-bookmark-app-anson.vercel.app/](https://smart-bookmark-app-anson.vercel.app/)
+- Public GitHub Repo: [https://github.com/ansoncodes/smart-bookmark-app](https://github.com/ansoncodes/smart-bookmark-app)
 
 ## Requirement Coverage
 
