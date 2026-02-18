@@ -44,7 +44,7 @@ export default function ThemeToggle() {
       </span>
 
       <span
-        className={`absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm transition-transform duration-200 ${isDark ? 'translate-x-8' : 'translate-x-0'
+        className={`absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm transition-all duration-200 ${isDark ? 'left-[calc(100%-1.75rem)]' : 'left-1'
           }`}
       >
         {isDark ? (
