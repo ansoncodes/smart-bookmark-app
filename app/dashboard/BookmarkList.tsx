@@ -5,7 +5,14 @@ import { useEffect, useState, useRef, useContext, useMemo } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import BulkActionBar from './BulkActionBar'
-import { deleteBookmarkAction, togglePinBookmarkAction, updateBookmarkAction, addToCollectionAction, removeFromCollectionAction } from '@/app/actions/bookmarks'
+import {
+  addToCollectionAction,
+  deleteBookmarkAction,
+  getLatestBookmarksAction,
+  removeFromCollectionAction,
+  togglePinBookmarkAction,
+  updateBookmarkAction,
+} from '@/app/actions/bookmarks'
 import ShareModal from './ShareModal'
 import type { Bookmark } from '@/lib/db/bookmarks'
 import type { Collection } from '@/lib/db/collections'
@@ -102,6 +109,7 @@ export default function BookmarkList({
   const dashboardContext = useContext(DashboardContext)
   const channelRef = useRef<any>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isSyncingRef = useRef(false)
 
   // memoize the supabase client instance so it persists across renders
   const [supabase] = useState(() => createClient())
@@ -184,6 +192,39 @@ export default function BookmarkList({
       }
     }
   }, [dashboardContext])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) {
+      return
+    }
+
+    const channel = new BroadcastChannel('bookmark-sync')
+    const onMessage = (event: MessageEvent) => {
+      const payload = event.data as { type?: string; bookmark?: Bookmark }
+      if (payload?.type !== 'bookmark-added' || !payload.bookmark) {
+        return
+      }
+
+      const incomingBookmark = payload.bookmark
+
+      if (incomingBookmark.user_id !== userId) {
+        return
+      }
+
+      setBookmarks((current) => {
+        if (current.some((b) => b.id === incomingBookmark.id)) {
+          return current
+        }
+        return sortBookmarks([incomingBookmark, ...current])
+      })
+    }
+
+    channel.addEventListener('message', onMessage)
+    return () => {
+      channel.removeEventListener('message', onMessage)
+      channel.close()
+    }
+  }, [userId])
 
   //subscribe to real-time updates
   useEffect(() => {
@@ -278,6 +319,45 @@ export default function BookmarkList({
       }
     }
   }, [userId, supabase, subscriptionVersion])
+
+  // Cross-browser fallback: periodic sync if realtime misses events.
+  useEffect(() => {
+    let mounted = true
+
+    const syncLatest = async () => {
+      if (isSyncingRef.current || document.hidden) {
+        return
+      }
+      isSyncingRef.current = true
+      try {
+        const latest = await getLatestBookmarksAction()
+        if (!mounted) return
+        setBookmarks(sortBookmarks(latest))
+      } catch (error) {
+        console.error('[BookmarkList] Fallback sync failed:', error)
+      } finally {
+        isSyncingRef.current = false
+      }
+    }
+
+    const intervalId = window.setInterval(syncLatest, 5000)
+
+    const onVisible = () => {
+      if (!document.hidden) {
+        syncLatest().catch(() => {})
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+
+    return () => {
+      mounted = false
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [])
 
   //handle page visibility changes
   useEffect(() => {

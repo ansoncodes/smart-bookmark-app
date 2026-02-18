@@ -113,6 +113,12 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
         if (dashboardContext?.optimisticAddCallbackRef.current) {
           dashboardContext.optimisticAddCallbackRef.current(bookmark)
         }
+        // Fallback sync for same-browser tabs if realtime drops events.
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('bookmark-sync')
+          channel.postMessage({ type: 'bookmark-added', bookmark })
+          channel.close()
+        }
         if (onBookmarkAdded) {
           onBookmarkAdded(bookmark)
         }

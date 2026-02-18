@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { addBookmark, updateBookmark, deleteBookmark, updateBookmarkLinkStatus } from '@/lib/db/bookmarks'
+import { getBookmarks } from '@/lib/db/bookmarks'
 import { addBookmarksToCollection, removeBookmarksFromCollection } from '@/lib/db/bookmarkCollections'
 import { validateUrl } from '@/lib/linkChecker'
 import { normalizeUrl, isValidUrl } from '@/lib/utils/url'
@@ -249,4 +250,17 @@ export async function checkBookmarkLinkAction(id: string, url: string) {
   await updateBookmarkLinkStatus(id, !isValid)
 
   revalidatePath('/dashboard')
+}
+
+// Fallback fetch used by clients when realtime misses events.
+export async function getLatestBookmarksAction() {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) {
+    throw new Error('User not authenticated')
+  }
+
+  return getBookmarks(data.user.id)
 }
