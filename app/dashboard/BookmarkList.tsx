@@ -620,14 +620,14 @@ export default function BookmarkList({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             {collectionName || 'All Bookmarks'}
           </h2>
         </div>
 
-        <div className="relative w-full md:w-auto md:flex-1 md:max-w-sm">
+        <div className="relative w-full xl:w-auto xl:flex-1 xl:max-w-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg
               className="h-4 w-4 text-gray-500 dark:text-gray-400"
@@ -675,11 +675,11 @@ export default function BookmarkList({
           )}
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap md:flex-nowrap md:justify-end">
+        <div className="w-full xl:w-auto flex items-center gap-3 flex-wrap xl:flex-nowrap xl:justify-end">
           {selectedCollectionId && filteredBookmarks.length > 0 && (
             <button
               onClick={handleOpenAll}
-              className="hidden md:flex items-center gap-2 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
+              className="hidden xl:flex items-center gap-2 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
               title="Open all displayed bookmarks in this collection"
             >
               <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -692,7 +692,7 @@ export default function BookmarkList({
           {selectedCollectionId && (
             <button
               onClick={() => setShareModalOpen(true)}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
+              className="hidden xl:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
               title="Share collection"
             >
               <svg className="w-4 h-4 text-gray-400 dark:text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -702,7 +702,7 @@ export default function BookmarkList({
             </button>
           )}
 
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">Sort</span>
             <div className="relative" ref={sortDropdownRef}>
               <button
@@ -736,7 +736,7 @@ export default function BookmarkList({
               )}
             </div>
           </div>
-          <span className="inline-flex items-center px-2.5 py-1 text-xs text-gray-400 dark:text-white/40">
+          <span className="inline-flex items-center px-2.5 py-1 text-xs text-gray-400 dark:text-white/40 whitespace-nowrap">
             {/* Show total count for current context (All or Collection), ignoring search */}
             {selectedCollectionId
               ? bookmarks.filter((b) => (bookmarkCollectionMap[b.id] || []).includes(selectedCollectionId)).length
