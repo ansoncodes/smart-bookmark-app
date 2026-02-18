@@ -72,6 +72,7 @@ export default function BookmarkList({
   const [editError, setEditError] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [connected, setConnected] = useState(false)
+  const [subscriptionVersion, setSubscriptionVersion] = useState(0)
   const [deleteModalBookmarkId, setDeleteModalBookmarkId] = useState<string | null>(null)
   const [showPermissionModal, setShowPermissionModal] = useState(false)
   const [hasVerifiedPermission, setHasVerifiedPermission] = useState(false)
@@ -258,9 +259,14 @@ export default function BookmarkList({
         if (status === 'SUBSCRIBED') {
           console.log('[BookmarkList] Realtime connected')
           setConnected(true)
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current)
+            reconnectTimeoutRef.current = null
+          }
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.log('[BookmarkList] Realtime disconnected:', status, err)
           setConnected(false)
+          attemptReconnect()
         }
       })
 
@@ -271,7 +277,7 @@ export default function BookmarkList({
         channelRef.current = null
       }
     }
-  }, [userId, supabase])
+  }, [userId, supabase, subscriptionVersion])
 
   //handle page visibility changes
   useEffect(() => {
@@ -301,13 +307,21 @@ export default function BookmarkList({
   //reconnect by recreating subscription
   const reconnect = () => {
     if (channelRef.current) {
-      const supabase = createClient()
       supabase.removeChannel(channelRef.current)
       channelRef.current = null
     }
-    //this will trigger the useEffect again
+    // trigger subscribe effect to recreate channel
+    setSubscriptionVersion((prev) => prev + 1)
     setConnected(false)
   }
+
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+      }
+    }
+  }, [])
 
   async function handleDelete(id: string) {
     //optimistic update
@@ -684,7 +698,7 @@ export default function BookmarkList({
           {selectedCollectionId && filteredBookmarks.length > 0 && (
             <button
               onClick={handleOpenAll}
-              className="hidden xl:flex items-center gap-2 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
+              className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-800 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
               title="Open all displayed bookmarks in this collection"
             >
               <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -697,7 +711,7 @@ export default function BookmarkList({
           {selectedCollectionId && (
             <button
               onClick={() => setShareModalOpen(true)}
-              className="hidden xl:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/30"
               title="Share collection"
             >
               <svg className="w-4 h-4 text-gray-400 dark:text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">

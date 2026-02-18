@@ -66,7 +66,7 @@ export default function BulkActionBar({
 
     return (
         <div className="sticky top-4 z-40 mb-6 animate-in fade-in slide-in-from-top-2 duration-300 fill-mode-both px-2 sm:px-4 md:px-0">
-            <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-gray-200/50 dark:border-zinc-800/50 rounded-2xl shadow-xl shadow-black/5 p-2 sm:pr-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4 mx-auto max-w-2xl ring-1 ring-black/5 dark:ring-white/5 overflow-x-auto no-scrollbar">
+            <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-gray-200/50 dark:border-zinc-800/50 rounded-2xl shadow-xl shadow-black/5 p-2 sm:pr-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4 mx-auto max-w-2xl ring-1 ring-black/5 dark:ring-white/5 overflow-visible">
 
                 {/* Left: Selection Info */}
                 <div className="flex items-center gap-3 pl-2 sm:pl-3 border-r border-gray-200 dark:border-zinc-800 pr-3 sm:pr-4 flex-shrink-0">
