@@ -584,22 +584,6 @@ export default function BookmarkList({
     setSearchQuery('')
   }
 
-  function handleAddFirstBookmarkClick() {
-    const formSection = document.getElementById('add-bookmark-form')
-    const titleInput = document.getElementById('add-bookmark-title') as HTMLInputElement | null
-
-    if (formSection) {
-      formSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-
-    if (titleInput) {
-      //delay focus slightly to avoid interrupting smooth scroll.
-      window.setTimeout(() => {
-        titleInput.focus()
-      }, 250)
-    }
-  }
-
   //empty state
   if (bookmarks.length === 0) {
     return (
@@ -617,15 +601,9 @@ export default function BookmarkList({
         <h3 className="relative text-2xl font-semibold tracking-tight text-gray-900 dark:text-white mb-3">
           No bookmarks yet
         </h3>
-        <p className="relative text-sm text-gray-600 dark:text-gray-400 max-w-md mb-8 leading-relaxed">
+        <p className="relative text-sm text-gray-600 dark:text-gray-400 max-w-md leading-relaxed">
           Start building your personal link library. Save articles, tools, and resources in one place.
         </p>
-        <button
-          onClick={handleAddFirstBookmarkClick}
-          className="relative inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950"
-        >
-          + Add your first bookmark
-        </button>
       </div>
     )
   }
