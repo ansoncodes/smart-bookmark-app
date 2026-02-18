@@ -54,6 +54,10 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
     }
   }, [isExpanded])
 
+  useEffect(() => {
+    setCollectionId(selectedCollectionId || '')
+  }, [selectedCollectionId])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -98,13 +102,14 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
     try {
       // Re-create FormData with normalized URL
       const finalFormData = new FormData()
+      const submittedCollectionId = (formData.get('collection_id')?.toString() || '').trim()
       finalFormData.append('title', title)
       finalFormData.append('url', normalizedUrl)
       if (formData.get('description')) {
         finalFormData.append('description', formData.get('description') as string)
       }
-      if (formData.get('collection_id')) {
-        finalFormData.append('collection_id', formData.get('collection_id') as string)
+      if (submittedCollectionId) {
+        finalFormData.append('collection_id', submittedCollectionId)
       }
 
       const bookmark = await addBookmarkAction(finalFormData)
@@ -117,13 +122,23 @@ export default function AddBookmarkForm({ onBookmarkAdded, collections = [], sel
         if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
           const channel = new BroadcastChannel('bookmark-sync')
           channel.postMessage({ type: 'bookmark-added', bookmark })
+          if (submittedCollectionId) {
+            channel.postMessage({
+              type: 'bookmark-collection-added',
+              relation: {
+                id: `temp-${bookmark.id}-${submittedCollectionId}`,
+                bookmark_id: bookmark.id,
+                collection_id: submittedCollectionId,
+              },
+            })
+          }
           channel.close()
         }
         if (onBookmarkAdded) {
           onBookmarkAdded(bookmark)
         }
-        if (collectionId && onAddToCollection) {
-          onAddToCollection([bookmark.id], collectionId)
+        if (submittedCollectionId && onAddToCollection) {
+          onAddToCollection([bookmark.id], submittedCollectionId)
         }
       }
 

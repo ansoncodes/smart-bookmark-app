@@ -4,7 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { addBookmark, updateBookmark, deleteBookmark, updateBookmarkLinkStatus } from '@/lib/db/bookmarks'
 import { getBookmarks } from '@/lib/db/bookmarks'
-import { addBookmarksToCollection, removeBookmarksFromCollection } from '@/lib/db/bookmarkCollections'
+import {
+  addBookmarksToCollection,
+  getBookmarkCollections,
+  removeBookmarksFromCollection,
+} from '@/lib/db/bookmarkCollections'
 import { validateUrl } from '@/lib/linkChecker'
 import { normalizeUrl, isValidUrl } from '@/lib/utils/url'
 
@@ -263,4 +267,17 @@ export async function getLatestBookmarksAction() {
   }
 
   return getBookmarks(data.user.id)
+}
+
+// Fallback fetch for bookmark-collection mappings when realtime misses events.
+export async function getLatestBookmarkCollectionsAction() {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) {
+    throw new Error('User not authenticated')
+  }
+
+  return getBookmarkCollections(data.user.id)
 }

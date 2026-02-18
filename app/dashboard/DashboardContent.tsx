@@ -9,6 +9,7 @@ import BookmarkList from '@/app/dashboard/BookmarkList'
 import Sidebar from '@/app/dashboard/Sidebar'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect } from 'react'
+import { getLatestBookmarkCollectionsAction } from '@/app/actions/bookmarks'
 
 interface DashboardContextType {
   optimisticAddCallbackRef: React.MutableRefObject<((bookmark: Bookmark) => void) | null>
@@ -35,6 +36,7 @@ export default function DashboardContent({
   const [collections, setCollections] = useState<Collection[]>(initialCollections)
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [bookmarkCollections, setBookmarkCollections] = useState<BookmarkCollection[]>(initialBookmarkCollections)
+  const isSyncingRelationsRef = useRef(false)
 
   // Use a ref for selectedCollectionId to avoid re-subscribing when it changes
   const selectedCollectionIdRef = useRef<string | null>(null)
@@ -130,6 +132,41 @@ export default function DashboardContent({
         (bc) => !(bookmarkIds.includes(bc.bookmark_id) && bc.collection_id === collectionId)
       )
     )
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) {
+      return
+    }
+
+    const channel = new BroadcastChannel('bookmark-sync')
+    const onMessage = (event: MessageEvent) => {
+      const payload = event.data as {
+        type?: string
+        relation?: BookmarkCollection
+      }
+
+      if (payload?.type !== 'bookmark-collection-added' || !payload.relation) {
+        return
+      }
+
+      const relation = payload.relation
+      setBookmarkCollections((prev) => {
+        const exists = prev.some(
+          (bc) =>
+            bc.id === relation.id ||
+            (bc.bookmark_id === relation.bookmark_id && bc.collection_id === relation.collection_id)
+        )
+        if (exists) return prev
+        return [...prev, relation]
+      })
+    }
+
+    channel.addEventListener('message', onMessage)
+    return () => {
+      channel.removeEventListener('message', onMessage)
+      channel.close()
+    }
   }, [])
 
   //subscribe to real-time updates for collections and assignments
@@ -230,6 +267,45 @@ export default function DashboardContent({
       supabase.removeChannel(relationsChannel)
     }
   }, [userId, supabase])
+
+  // Cross-browser fallback: periodically sync bookmark-collection mappings.
+  useEffect(() => {
+    let mounted = true
+
+    const syncLatestRelations = async () => {
+      if (isSyncingRelationsRef.current || document.hidden) {
+        return
+      }
+      isSyncingRelationsRef.current = true
+      try {
+        const latest = await getLatestBookmarkCollectionsAction()
+        if (!mounted) return
+        setBookmarkCollections(latest)
+      } catch (error) {
+        console.error('[DashboardContent] Fallback relation sync failed:', error)
+      } finally {
+        isSyncingRelationsRef.current = false
+      }
+    }
+
+    const intervalId = window.setInterval(syncLatestRelations, 5000)
+
+    const onVisible = () => {
+      if (!document.hidden) {
+        syncLatestRelations().catch(() => {})
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+
+    return () => {
+      mounted = false
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [])
 
   return (
     <DashboardContext.Provider value={contextValue}>
