@@ -70,10 +70,14 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
   - Newest
   - Oldest
   - A-Z
+<img width="1347" height="174" alt="image" src="https://github.com/user-attachments/assets/8049380b-7c74-45af-ada9-2a643f480858" />
+
 
 ### Pin Important Bookmarks
 - Pin/unpin feature
 - Pinned items always stay on top
+<img width="1357" height="402" alt="image" src="https://github.com/user-attachments/assets/868b9067-5e86-4ef2-b2e0-7f0f65994037" />
+
 
 ### Bulk Actions 
 - Multi-select bookmarks
@@ -82,10 +86,14 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
   - Add to collection
   - Remove from collection
   - Open multiple links
+<img width="1378" height="665" alt="image" src="https://github.com/user-attachments/assets/84b28a4b-1276-4687-bf3c-53ab22e9ccaf" />
+
 
 ### Smart Multi-Tab Opening
 - Handles browser popup blockers
 - Includes verification flow before opening multiple tabs
+<img width="184" height="133" alt="image" src="https://github.com/user-attachments/assets/97f5b308-c859-413a-8e23-78d0fe0b83a5" />
+
 
 ### Real-Time + Optimistic UX
 - Immediate UI updates (no waiting)
@@ -96,6 +104,8 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
 - Generate shareable links
 - Public read-only view
 - Ownership validation enforced
+<img width="738" height="464" alt="image" src="https://github.com/user-attachments/assets/5cadc403-e65f-4e72-821c-a7de95be2127" />
+
 
 ### Import Shared Collections
 - Import shared collections into your account
@@ -109,16 +119,24 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
 **Preview System**
 - Hover to see metadata preview
 - Fetched via API route
+<img width="1421" height="664" alt="image" src="https://github.com/user-attachments/assets/70b78369-7ca5-475e-838e-fd46ffbcd850" />
+
 
 **Broken Link Detection**
 - Tracks link health
 - Stores status + last checked time
+<img width="1337" height="186" alt="image" src="https://github.com/user-attachments/assets/f0620195-6fca-4576-b439-2d23ab966e0f" />
+
 
 ### UI/UX 
 - Clean dashboard layout
 - Responsive (desktop + mobile)
 - Dark / Light theme
 - Custom modals (no default browser popups)
+<img width="2559" height="1429" alt="image" src="https://github.com/user-attachments/assets/7aad0db9-9250-4734-ac35-1669d1e83c88" />
+<img width="1280" height="713" alt="image" src="https://github.com/user-attachments/assets/8f88da35-a413-4b71-9c61-2ed67cb148f8" />
+
+
 
 ---
 
