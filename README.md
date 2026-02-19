@@ -7,6 +7,10 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
 - **Live App:** https://smart-bookmark-app-anson.vercel.app/
 - **GitHub Repo:** https://github.com/ansoncodes/smart-bookmark-app
 
+# Demo Video
+[![Smart Bookmark App Demo](https://img.youtube.com/vi/bhz0vEFbyhU/maxresdefault.jpg)](https://youtu.be/bhz0vEFbyhU)
+*Click to watch the demo video*
+
 ---
 
 ## Core Features (Requirement Coverage)
