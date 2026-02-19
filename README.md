@@ -54,6 +54,8 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
 - Create, rename, delete collections
 - Filter bookmarks by collection
 - "All Bookmarks" default view
+<img width="153" height="135" alt="image" src="https://github.com/user-attachments/assets/6e308075-a527-4d69-b829-ad3ea6939e4d" />
+
 
 ### Many-to-Many Data Modeling
 - Bookmarks <-> Collections via junction table
