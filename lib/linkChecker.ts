@@ -1,16 +1,15 @@
 /**
  * Validates if a URL is reachable.
- * Returns false only for clearly broken links (e.g. 404/410).
- * Many real sites block bots/HEAD requests, so we treat ambiguous/network
- * failures as valid to avoid false broken-link flags.
+ * Returns false for clearly broken links while avoiding common false positives
+ * from anti-bot protections.
  */
 export async function validateUrl(url: string): Promise<boolean> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
+
     try {
         // Basic format check
         new URL(url)
-
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
 
         const headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
@@ -34,18 +33,46 @@ export async function validateUrl(url: string): Promise<boolean> {
             })
         }
 
-        clearTimeout(timeoutId)
-
-        // Mark as broken only for explicit "not found / gone" responses.
+        // Definitely broken resources.
         if (response.status === 404 || response.status === 410) {
             return false
         }
 
-        // Everything else is treated as reachable/ambiguous to avoid false positives.
+        // Server-side failures are generally broken for the user at check time.
+        if (response.status >= 500) {
+            return false
+        }
+
+        // Bot-protection/auth/rate-limit responses are reachable but blocked.
+        if (response.status === 401 || response.status === 403 || response.status === 429) {
+            return true
+        }
+
         return true
     } catch (error) {
         console.error(`[validateUrl] Error checking ${url}:`, error)
-        // Network/bot-protection errors are ambiguous, not definitively broken.
+        const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+
+        // Timeout is ambiguous; avoid false broken flags for slow sites.
+        if (message.includes('aborted') || message.includes('timeout')) {
+            return true
+        }
+
+        // DNS/network/TLS failures are usually truly unreachable.
+        if (
+            message.includes('enotfound') ||
+            message.includes('econnrefused') ||
+            message.includes('eai_again') ||
+            message.includes('certificate') ||
+            message.includes('getaddrinfo') ||
+            message.includes('network')
+        ) {
+            return false
+        }
+
+        // Default to reachable to avoid over-flagging.
         return true
+    } finally {
+        clearTimeout(timeoutId)
     }
 }
