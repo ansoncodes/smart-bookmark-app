@@ -51,23 +51,47 @@ export async function validateUrl(url: string): Promise<boolean> {
         return true
     } catch (error) {
         console.error(`[validateUrl] Error checking ${url}:`, error)
-        const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+        const errObj = error as {
+            message?: string
+            cause?: { code?: string; errno?: number; syscall?: string; message?: string }
+        }
+        const message = (errObj?.message || String(error)).toLowerCase()
+        const causeMessage = (errObj?.cause?.message || '').toLowerCase()
+        const causeCode = (errObj?.cause?.code || '').toLowerCase()
+        const syscall = (errObj?.cause?.syscall || '').toLowerCase()
+        const combined = `${message} ${causeMessage} ${causeCode} ${syscall}`
 
         // Timeout is ambiguous; avoid false broken flags for slow sites.
-        if (message.includes('aborted') || message.includes('timeout')) {
+        if (combined.includes('aborted') || combined.includes('timeout')) {
             return true
         }
 
         // DNS/network/TLS failures are usually truly unreachable.
         if (
-            message.includes('enotfound') ||
-            message.includes('econnrefused') ||
-            message.includes('eai_again') ||
-            message.includes('certificate') ||
-            message.includes('getaddrinfo') ||
-            message.includes('network')
+            causeCode === 'enotfound' ||
+            causeCode === 'econnrefused' ||
+            causeCode === 'eai_again' ||
+            causeCode === 'und_err_connect_timeout' ||
+            causeCode === 'und_err_socket' ||
+            combined.includes('enotfound') ||
+            combined.includes('econnrefused') ||
+            combined.includes('eai_again') ||
+            combined.includes('getaddrinfo') ||
+            combined.includes('network') ||
+            syscall === 'getaddrinfo'
         ) {
             return false
+        }
+
+        // Invalid URL format is definitely bad.
+        if (combined.includes('invalid url')) {
+            return false
+        }
+
+        // Cert chain issues from runtime/network path can be environment-specific.
+        // Avoid false positives for otherwise valid sites.
+        if (combined.includes('certificate') || combined.includes('issuer cert')) {
+            return true
         }
 
         // Default to reachable to avoid over-flagging.
