@@ -7,9 +7,8 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
 - **Live App:** https://smart-bookmark-app-anson.vercel.app/
 - **GitHub Repo:** https://github.com/ansoncodes/smart-bookmark-app
 
-# Demo Video
+## Demo Video
 [![Smart Bookmark App Demo](https://img.youtube.com/vi/bhz0vEFbyhU/maxresdefault.jpg)](https://youtu.be/bhz0vEFbyhU)
-
 *Click to watch the demo video*
 
 ---
@@ -55,6 +54,8 @@ A modern, real-time bookmark manager built with Next.js and Supabase — designe
 - Create, rename, delete collections
 - Filter bookmarks by collection
 - "All Bookmarks" default view
+<img width="153" height="135" alt="image" src="https://github.com/user-attachments/assets/6e308075-a527-4d69-b829-ad3ea6939e4d" />
+
 
 ### Many-to-Many Data Modeling
 - Bookmarks <-> Collections via junction table
